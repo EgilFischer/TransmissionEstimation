@@ -118,10 +118,15 @@ exp(profile.confint[2,]+fit$coefficients[[1]])
 
 #calculate R0
 alpha = 0.05 #conf.level
+#beta
 mean.logbeta <- summary(fit)$coefficients[,1] 
 se.logbeta<- summary(fit)$coefficients[,2]
+#infectious period
 mean.inf.per<- aggregate(out.indiv$infper, list(out.indiv$Vaccinated),mean)
 sem.inf.per <- aggregate(out.indiv$infper, list(out.indiv$Vaccinated),sd)$x/sqrt(c(sum(out.indiv$Vaccinated =="No"), sum(out.indiv$Vaccinated =="Yes")))
+mean.log.inf.per <- aggregate(log(sapply(out.indiv$infper,function(x){max(x,.5)})), list(out.indiv$Vaccinated),mean)
+sem.log.inf.per<- aggregate(log(sapply(out.indiv$infper,function(x){max(x,.5)})), list(out.indiv$Vaccinated),sd)$x/sqrt(c(sum(out.indiv$Vaccinated =="No"), sum(out.indiv$Vaccinated =="Yes")))
+#R0
 mean.R0 <- data.frame(Vaccinated = c("No","Yes"),
                       beta = exp(c(mean.logbeta[1],sum(mean.logbeta))),
                       llbeta = exp(profile.confint[,1]+c(mean.logbeta[1],sum(mean.logbeta))),
@@ -129,9 +134,12 @@ mean.R0 <- data.frame(Vaccinated = c("No","Yes"),
                       infper = mean.inf.per$x,
                       llinfper =  mean.inf.per$x+qnorm(alpha/2,lower.tail = T)*sem.inf.per,
                       ulinfper =  mean.inf.per$x+qnorm(alpha/2,lower.tail = F)*sem.inf.per,
-                      R0 = exp(c(mean.logbeta[1]  ,sum(mean.logbeta)))*mean.inf.per$x,
-                      llR0 = exp(profile.confint[,1])*(mean.inf.per$x + qnorm(alpha/2)*sem.inf.per),
-                      ulR0 = exp(profile.confint[,2])*(mean.inf.per$x + qnorm(alpha/2,lower.tail = F)*sem.inf.per)
+                      logR0 = c(mean.logbeta[1]  ,sum(mean.logbeta))+mean.log.inf.per$x,
+                      lllogR0 = (c(mean.logbeta[1]  ,sum(mean.logbeta))+mean.log.inf.per$x) + qnorm(alpha/2,lower.tail = T)*(se.logbeta + sem.log.inf.per),
+                      ullogR0 = (c(mean.logbeta[1]  ,sum(mean.logbeta))+mean.log.inf.per$x) + qnorm(alpha/2,lower.tail = F)*(se.logbeta + sem.log.inf.per)
                       )
 
+mean.R0$R <- exp(mean.R0$logR0)
+mean.R0$llR <- exp(mean.R0$lllogR0)
+mean.R0$ulR <- exp(mean.R0$ullogR0)
 mean.R0
