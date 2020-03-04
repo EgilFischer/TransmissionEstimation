@@ -6,11 +6,18 @@ library(openxlsx)
 library(ggplot2)
 data.dir <- "C:/Surfdrive/Projecten/CEVA/"
 #read the data of the vaccination group
-cevadata1A <- read.xlsx(paste0(data.dir, "P062VectormuneNDtransmissionstudysheddingdata_setA_readible.xlsx"),
-                      sheet = "Group1A")
+cevadata1A <- read.xlsx(paste0(data.dir,
+                               "P062VectormuneNDtransmissionstudysheddingdata_setA_readible.xlsx"),
+                        sheet = "Group1A")
 cevadata2A <- read.xlsx(paste0(data.dir, "P062VectormuneNDtransmissionstudysheddingdata_setA_readible.xlsx"),
                         sheet = "Group2A")
-cevadata <- rbind(cevadata1A,cevadata2A)
+cevadata1B <- read.xlsx(paste0(data.dir,
+                               "P062VectormuneNDtransmissionstudysheddingdata_setB_readible.xlsx"),
+                        sheet = "Group1B")
+cevadata2B <- read.xlsx(paste0(data.dir, "P062VectormuneNDtransmissionstudysheddingdata_setB_readible.xlsx"),
+                        sheet = "Group2B")
+
+cevadata <- rbind(cevadata1A,cevadata1B,cevadata2A,cevadata2B)
 
 #rename to standard
 cevadata$ci <- sapply(cevadata$Challenge, FUN = function(x){ifelse(grepl("contact", x),"contact","seeder")})
