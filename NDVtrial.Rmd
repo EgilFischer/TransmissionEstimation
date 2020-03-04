@@ -393,15 +393,15 @@ sem.log.inf.per<- aggregate(log(sapply(out.indiv$infper,function(x){max(x,.5)}))
 #R0
 mean.R0 <- data.frame(Vaccinated = c("No","Yes"),
                       beta = exp(c(mean.logbeta[1],sum(mean.logbeta))),
-                      llbeta = exp(profile.confint[,1]+c(mean.logbeta[1],sum(mean.logbeta))),
-                      ulbeta = exp(profile.confint[,2]+c(mean.logbeta[1],sum(mean.logbeta))),
-                      infper = mean.inf.per[mean.inf.per[,2]=="contact",]$x,
-                      llinfper =  mean.inf.per[mean.inf.per[,2]=="contact",]$x+qnorm(alpha/2,lower.tail = T)*sem.inf.per[sem.inf.per[,2]=="contact",]$x,
-                      ulinfper =  mean.inf.per[mean.inf.per[,2]=="contact",]$x+qnorm(alpha/2,lower.tail = F)*sem.inf.per[sem.inf.per[,2]=="contact",]$x,
-                      logR0 = c(mean.logbeta[1]  ,sum(mean.logbeta))+mean.log.inf.per[mean.inf.per[,2]=="contact",]$x,
-                      lllogR0 = (c(mean.logbeta[1]  ,sum(mean.logbeta))+mean.log.inf.per[mean.inf.per[,2]=="contact",]$x) + qnorm(alpha/2,lower.tail = T)*(se.logbeta + sem.log.inf.per[sem.inf.per[,2]=="contact",]$x),
-                      ullogR0 = (c(mean.logbeta[1]  ,sum(mean.logbeta))+mean.log.inf.per[mean.inf.per[,2]=="contact",]$x) + qnorm(alpha/2,lower.tail = F)*(se.logbeta + sem.log.inf.per[sem.inf.per[,2]=="contact",]$x)
-                      )
+                      llbeta = exp(profile.confint[,1]+c(0,mean.logbeta[1])),
+                      ulbeta = exp(profile.confint[,2]+c(0,mean.logbeta[1])),
+                      infper = mean.inf.per$x,
+                      llinfper =  mean.inf.per$x+qnorm(alpha/2,lower.tail = T)*sem.inf.per$x,
+                      ulinfper =  mean.inf.per$x+qnorm(alpha/2,lower.tail = F)*sem.inf.per$x,
+                      logR0 = c(mean.logbeta[1]  ,sum(mean.logbeta))+mean.log.inf.per$x,
+                      lllogR0 = (c(mean.logbeta[1]  ,sum(mean.logbeta))+mean.log.inf.per$x) + qnorm(alpha/2,lower.tail = T)*(se.logbeta + sem.log.inf.per$x),
+                      ullogR0 = (c(mean.logbeta[1]  ,sum(mean.logbeta))+mean.log.inf.per$x) + qnorm(alpha/2,lower.tail = F)*(se.logbeta + sem.log.inf.per$x))
+                      
 
 mean.R0$R <- exp(mean.R0$logR0)
 mean.R0$llR <- exp(mean.R0$lllogR0)
@@ -515,10 +515,10 @@ sem.inf.per <- aggregate(out.indiv$infper, list(out.indiv$Vaccinated),sd)$x/sqrt
 mean.log.inf.per <- aggregate(log(sapply(out.indiv$infper,function(x){max(x,.5)})), list(out.indiv$Vaccinated),mean)
 sem.log.inf.per<- aggregate(log(sapply(out.indiv$infper,function(x){max(x,.5)})), list(out.indiv$Vaccinated),sd)$x/sqrt(c(sum(out.indiv$Vaccinated =="No"), sum(out.indiv$Vaccinated =="Yes")))
 #R0
-mean.R0 <- data.frame(Vaccinated = c("No"),
-                      beta = exp(c(mean.logbeta[1],sum(mean.logbeta))),
-                      llbeta = exp(profile.confint[1]+c(mean.logbeta[1],sum(mean.logbeta))),
-                      ulbeta = exp(profile.confint[2]+c(mean.logbeta[1],sum(mean.logbeta))),
+mean.R0 <- data.frame(Vaccinated = c("No","Yes"),
+                      beta = exp(c(mean.logbeta[1])),
+                      llbeta = exp(profile.confint[1]+0),
+                      ulbeta = exp(profile.confint[2]+0),
                       infper = mean.inf.per$x,
                       llinfper =  mean.inf.per$x+qnorm(alpha/2,lower.tail = T)*sem.inf.per,
                       ulinfper =  mean.inf.per$x+qnorm(alpha/2,lower.tail = F)*sem.inf.per,
@@ -645,7 +645,7 @@ profile.confint <- confint(fit.vac);
 beta.table<- data.frame(rbind(cbind( beta = exp(fit.vac$coefficients[[1]]), t(exp(profile.confint[1,]))),
 cbind( beta = exp(fit.vac$coefficients[[1]]+fit.vac$coefficients[[2]]), t(exp(profile.confint[2,]+fit.vac$coefficients[[1]])))));
 
-beta.table <- cbind(Vaccination = c("Yes","No") ,beta.table)
+beta.table <- cbind(Vaccination = c("No","Yes") ,beta.table)
 colnames(beta.table)<- c("Vaccination","beta","2.5%","97.5")
 ```
 ```{r}
@@ -674,8 +674,8 @@ sem.log.inf.per<- aggregate(log(sapply(out.indiv$infper,function(x){max(x,.5)}))
 #R0
 mean.R0 <- data.frame(Vaccinated = c("No","Yes"),
                       beta = exp(c(mean.logbeta[1],sum(mean.logbeta))),
-                      llbeta = exp(profile.confint[,1]+c(mean.logbeta[1],sum(mean.logbeta))),
-                      ulbeta = exp(profile.confint[,2]+c(mean.logbeta[1],sum(mean.logbeta))),
+                      llbeta = exp(profile.confint[,1]+c(0,mean.logbeta[1])),
+                      ulbeta = exp(profile.confint[,2]+c(0,mean.logbeta[1])),
                       infper = mean.inf.per$x,
                       llinfper =  mean.inf.per$x+qnorm(alpha/2,lower.tail = T)*sem.inf.per,
                       ulinfper =  mean.inf.per$x+qnorm(alpha/2,lower.tail = F)*sem.inf.per,
@@ -840,8 +840,8 @@ sem.log.inf.per<- aggregate(log(sapply(out.indiv$infper,function(x){max(x,.5)}))
 #R0
 mean.R0 <- data.frame(Vaccinated = c("No","Yes"),
                       beta = exp(c(mean.logbeta[1],sum(mean.logbeta))),
-                      llbeta = exp(profile.confint[,1]+c(mean.logbeta[1],sum(mean.logbeta))),
-                      ulbeta = exp(profile.confint[,2]+c(mean.logbeta[1],sum(mean.logbeta))),
+                      llbeta = exp(profile.confint[,1]+c(0,mean.logbeta[1])),
+                      ulbeta = exp(profile.confint[,2]+c(0,mean.logbeta[1])),
                       infper = mean.inf.per$x,
                       llinfper =  mean.inf.per$x+qnorm(alpha/2,lower.tail = T)*sem.inf.per,
                       ulinfper =  mean.inf.per$x+qnorm(alpha/2,lower.tail = F)*sem.inf.per,
@@ -865,17 +865,35 @@ Based on the assumption of CLO samples required to be positive, we find that the
 all.results <- rbind(all.results, cbind(Assumption = "CLO sample", mean.R0))
 
 ```
-## Graphic summary of results
-### Infectious period
-```{r }
+# Graphic summary of results
+```{r include = F}
+#remove section line for "Both" to clean up
+all.results <- all.results[c(1,2,5,6,7,8,9,10),]
+```
+## Infectious period
+```{r}
 ggplot(data = all.results) + 
-  geom_point(aes(x = Assumption, y =infper))+
-  geom_errorbar(aes( x = Assumption, ymin = llinfper, ymax = ulinfper))+
-  facet_grid(.~Vaccinated)
+  geom_point(aes(x = Assumption, y =infper,colour = Assumption ))+
+  geom_errorbar(aes( x = Assumption, ymin = llinfper, ymax = ulinfper,colour = Assumption ))+
+  facet_grid(.~Vaccinated)+ylab("Infectious period")
+
+```
+## Transmission parameter \(\beta\)
+```{r}
+ggplot(data = all.results) + 
+  geom_point(aes(x = Assumption, y = beta,colour = Assumption ))+
+  geom_errorbar(aes( x = Assumption, ymin = llbeta, ymax = ulbeta,colour = Assumption ))+
+  facet_grid(.~Vaccinated)+ylab("Transmission parameter beta")
+
+```
+## Reproduction number \(R\)
+```{r}
+ggplot(data = all.results) + 
+  geom_point(aes(x = Assumption, y = R,colour = Assumption ))+
+  geom_errorbar(aes( x = Assumption, ymin = llR, ymax = ulR,colour = Assumption ))+
+  facet_grid(.~Vaccinated)+ylab("Transmission parameter beta")
 
 ```
 
-
-
-### Conclusions
+# Conclusions
 
