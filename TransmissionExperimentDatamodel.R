@@ -30,7 +30,7 @@ reform.data<- function(data,
   colnames(aggregate.data)[1:4]<- c("Group","bird.id","Vaccinated","Challenge")
   
   #aggregate to number of infections prior to time step
-  id<-NULL; inf <- NULL; n <- NULL; cases <- NULL;
+  id<-NULL; inf <- NULL; rec<- NULL;n <- NULL; cases <- NULL;
   for(day in c(1:length(sampleday.vars)))
   {
     #determine the number of infectious at this day
@@ -38,7 +38,14 @@ reform.data<- function(data,
                                  ndpch = day,
                                  aggregate.data.frame(aggregate.data[,sampleday.vars[day]], 
                                                       by = list(aggregate.data$Group, aggregate.data$Vaccinated), 
-                                                      FUN = sum,na.rm = TRUE)
+                                                      FUN = function(x){sum(x==1,na.rm = TRUE)})
+    ))
+    #determine the number of recoverd at this day
+    rec <- rbind(rec, data.frame(dpch = sampleday.vars[day],
+                                 ndpch = day,
+                                 aggregate.data.frame(aggregate.data[,sampleday.vars[day]], 
+                                                      by = list(aggregate.data$Group, aggregate.data$Vaccinated), 
+                                                      FUN = function(x){sum(x==2, na.rm = TRUE)})
     ))
     #determine the number of birds at this day
     n <- rbind(n, data.frame(dpch = sampleday.vars[day],
@@ -68,7 +75,7 @@ reform.data<- function(data,
       )
     }
   }
-  susceptibles = n$x - inf$x
+  susceptibles = n$x - inf$x-rec$x
   #combine infectious, population and cases
   output = cbind(inf,
                  S = susceptibles, 
@@ -160,8 +167,10 @@ SIR.state<- function(in.data,#vector of consecutive samples
     index.nas <- c(1:length(out.data))[is.na(out.data)]
     if(is.na(index.first)|index.first> length(out.data))
     {
+      index.first <- NA #no infection
       index.last<- NA #no recovery without infection
     }
+    
     #set all to one
     if(!is.na(index.first)){
             out.data[index.first:length(out.data)] <- 1
@@ -170,30 +179,11 @@ SIR.state<- function(in.data,#vector of consecutive samples
     }
     
   
-  if(model == "SIS") {stop("not yet implemented")}
+  #if(model == "SIS") {stop("not yet implemented")}
   
   return(out.data)
 }
 
 
 
-#test
-cevadata
-ref.data.inf1<- reform.data(cevadata,
-                             model = "SIR",
-                             sampleday.vars = paste0(c(1:14),".dpch"),
-                             positive.if = "max",
-                             inf.rule = 1,
-                             cut.off = 36)
-
-rm(ref.data.inf2);ref.data.inf2 <- reform.data(cevadata[66,],
-                             model = "SIR",
-                             sampleday.vars = paste0(c(1:14),".dpch"),
-                             positive.if = "max",
-                             inf.rule = 2,
-                             rec.rule = 1,
-                             cut.off = 36)
-cevadata[9,]
-ref.data.inf1[[2]][66,]
-ref.data.inf2[[2]][66,]
 
