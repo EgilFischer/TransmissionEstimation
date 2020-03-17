@@ -20,10 +20,12 @@ reform.data<- function(data,
   #recode based on transmission model
   for(ani in c(1:length(aggregate.data[,1])))
   {
+   
     aggregate.data[ani,sampleday.vars]<-SIR.state(as.vector(aggregate.data[ani,sampleday.vars][1,]),
                                                   model = model,
                                                   inf.rule = inf.rule,
                                                   rec.rule = rec.rule )
+    
   }
   
   #change the colnames
@@ -93,7 +95,8 @@ reform.data<- function(data,
 SIR.state<- function(in.data,#vector of consecutive samples
                       model,#type of transmission model to use
                       inf.rule =1,
-                      rec.rule =1
+                      rec.rule =1,
+                      only.last = T #if only last cell is positive remove
  ){
   out.data <- in.data;
   #determine potential infection and recovery events
@@ -152,7 +155,7 @@ SIR.state<- function(in.data,#vector of consecutive samples
       index.last <- c(1:length(out.data))[change== -1 & !is.na(change)][index]
       if(!is.na(index.last))
       {
-      if(min(in.data[index.last:min(index.last+rec.rule-1, length(in.data))])==0)
+      if(max(in.data[index.last:min(index.last+rec.rule-1, length(in.data))])==0)
         {
         found = T
         }
@@ -174,12 +177,21 @@ SIR.state<- function(in.data,#vector of consecutive samples
     #set all to one
     if(!is.na(index.first)){
             out.data[index.first:length(out.data)] <- 1
-    if(!is.na(index.last)){ out.data[index.last:length(out.data)] <- 2}}
+    if(!is.na(index.last)){ out.data[(index.last):length(out.data)] <- 2}}
     out.data[index.nas] <- NA
     }
     
   
   #if(model == "SIS") {stop("not yet implemented")}
+  
+  if(only.last){
+    if(sum(as.numeric(out.data[1,]),na.rm = T)==1){
+      if(tail(out.data[!is.na(out.data)], n = 1) == 1)
+        {
+        out.data[!is.na(out.data)]<- 0}#set all to be 0
+      }
+      
+  }
   
   return(out.data)
 }
