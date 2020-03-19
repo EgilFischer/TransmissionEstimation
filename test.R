@@ -5,3 +5,4 @@ data.one.SIR <- reform.data(cevadata,
                             inf.rule = 2,
                             rec.rule = 2,
                             cut.off = 36)
+data.one.SIR[[1]]
