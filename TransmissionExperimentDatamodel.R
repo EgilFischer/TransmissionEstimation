@@ -1,5 +1,17 @@
 #reform data for glm
-#count infections based on each type of sample separately
+
+#use file with states already determined
+ reform.SIR.data <- function(data, 
+                            sampleday.vars,
+                            exclude.seeder = T
+ ){
+   reform.data(data,
+               sampleday.vars = sampleday.vars,
+               exclude.seeder = exclude.seeder,
+               SIR.state = T)
+ }
+
+#count infections based on each type of sample separately 
 reform.data<- function(data, 
                        model = c("SIS","SIR","SI")[1],#transmission model default SIS model
                        inf.rule =1, #rule with number of consecutive positive samples to be determined infectious
@@ -7,9 +19,16 @@ reform.data<- function(data,
                        sampleday.vars,
                        group.by = NULL, 
                        positive.if = c("max","min")[1],#max will use at least 1 positive sample, min all samples positive.
-                       cut.off = 0){
+                       cut.off = 0,
+                       exclude.seeder = T,
+                       SIR.state = F#False measn that SIR status needs to be determined
+                       )
+  {
+  
+  if(!SIR.state){
   #start with a recoding data to binary yes/no
-  binary.data <- data; binary.data[, sampleday.vars] <- lapply(binary.data[, sampleday.vars], FUN = function(x){ifelse(x < cut.off,1,0)});
+  binary.data <- data; binary.data[, sampleday.vars] <- lapply(binary.data[, sampleday.vars], 
+                                                               FUN = function(x){ifelse(x < cut.off,1,0)});
   #group positive samples based on positive.if statement
   aggregate.data <- aggregate.data.frame(binary.data[,sampleday.vars], 
                                          by = list(binary.data$Group, 
@@ -30,9 +49,12 @@ reform.data<- function(data,
   
   #change the colnames
   colnames(aggregate.data)[1:4]<- c("Group","bird.id","Vaccinated","Challenge")
-  
-  #aggregate to number of infections prior to time step
-  id<-NULL; inf <- NULL; rec<- NULL;n <- NULL; cases <- NULL;
+  }
+   else{
+    aggregate.data <- data #already as input presented.
+   }
+  #aggregate to number of infections prior to time step TODO is to put this in a separate function
+  id<-NULL; inf <- NULL; rec<- NULL;n <- NULL; cases <- NULL;susceptibles <- NULL;
   for(day in c(1:length(sampleday.vars)))
   {
     #determine the number of infectious at this day
@@ -57,33 +79,73 @@ reform.data<- function(data,
                                                   FUN = function(x) sum( !is.na(x) )) 
                              
     ))
+    
+    #determine the number of susceptibles
+    if(exclude.seeder){
+      susceptibles <- rbind(susceptibles, data.frame(dpch = sampleday.vars[day],
+                               ndpch = day,
+                               aggregate.data.frame(aggregate.data[aggregate.data$Challenge == "contact",sampleday.vars[day]], 
+                                                    by = list(aggregate.data$Group[aggregate.data$Challenge == "contact"], 
+                                                              aggregate.data$Vaccinated[aggregate.data$Challenge == "contact"]), 
+                                                    FUN = function(x) {sum(x==0, na.rm = TRUE)}))) 
+      
+    }else
+    {
+      susceptibles <- rbind(susceptibles, data.frame(dpch = sampleday.vars[day],
+                                                     ndpch = day,
+                                                     aggregate.data.frame(aggregate.data[,sampleday.vars[day]], 
+                                                                          by = list(aggregate.data$Group, aggregate.data$Vaccinated), 
+                                                                          FUN = function(x) {sum(x==0, na.rm = TRUE)})))
+    }
+    
     #determine the number of new cases at this day
     if(day < length(sampleday.vars)){
+      if(exclude.seeder){
       cases <- rbind(cases, data.frame(dpch = sampleday.vars[day],
                                        ndpch = day,
                                        cases =  aggregate.data.frame((
-                                         aggregate.data[,sampleday.vars[day+1]]-aggregate.data[,sampleday.vars[day]])>0, 
-                                         by = list(aggregate.data$Group, aggregate.data$Vaccinated), 
-                                         FUN = sum, na.rm = TRUE)
-      )
-      )
+                                         aggregate.data[aggregate.data$Challenge == "contact",sampleday.vars[day+1]]-aggregate.data[aggregate.data$Challenge == "contact",sampleday.vars[day]])>0, 
+                                         by = list(aggregate.data$Group[aggregate.data$Challenge == "contact"], aggregate.data$Vaccinated[aggregate.data$Challenge == "contact"]), 
+                                         FUN = sum, na.rm = TRUE)   )      )
+      }
+      else
+        {
+        cases <- rbind(cases, data.frame(dpch = sampleday.vars[day],
+                                         ndpch = day,
+                                         cases =  aggregate.data.frame((
+                                           aggregate.data[,sampleday.vars[day+1]]-aggregate.data[,sampleday.vars[day]])>0, 
+                                           by = list(aggregate.data$Group, aggregate.data$Vaccinated), 
+                                           FUN = sum, na.rm = TRUE)))
+      }
     }else {
+     
+      #determine cases and potential exclude the seeders
+      if(exclude.seeder){
+        cases <- rbind(cases, 
+                       data.frame(dpch = sampleday.vars[day],
+                                  ndpch = day,
+                                  cases = aggregate.data.frame(aggregate.data[aggregate.data$Challenge == "contact",sampleday.vars[day]], 
+                                                               by = list(aggregate.data$Group[aggregate.data$Challenge == "contact"],
+                                                                         aggregate.data$Vaccinated[aggregate.data$Challenge == "contact"]), 
+                                                               FUN = function(x){0}))
+        )}
+      else{
       cases <- rbind(cases, 
                      data.frame(dpch = sampleday.vars[day],
                                 ndpch = day,
                                 cases = aggregate.data.frame(aggregate.data[,sampleday.vars[day]], 
                                                              by = list(aggregate.data$Group, aggregate.data$Vaccinated), 
                                                              FUN = function(x){0}))
-      )
+      )}
     }
   }
-  susceptibles = n$x - inf$x-rec$x
+    
   #combine infectious, population and cases
   output = cbind(inf,
-                 S = susceptibles, 
+                 S = susceptibles$x, 
                  C = cases$cases.x, 
-                 N = n$x
-  )
+                 N = n$x)
+  
   colnames(output)[c(3:8)]<- c("Group","Vaccinated","I","S","C","N")
   
   return(list(output,aggregate.data))
