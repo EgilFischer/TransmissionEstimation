@@ -1,17 +1,19 @@
 ---
-title: "NDVtrial_presentation_2"
+title: "NDVtrial_presentation_3"
 author: "Egil Fischer"
 date: "17-3-2020"
 output:
-  slidy_presentation: default
   beamer_presentation: 
    theme: Berkeley
    slide_level: 2
+  slidy_presentation: default
   powerpoint_presentation: default
   ioslides_presentation: default
 ---
 
 ```{r setup, include=FALSE}
+#opts_chunk$set(comment = NA, echo=FALSE, message = FALSE, warnings = FALSE)
+options("getSymbols.warning4.0"=FALSE)
 #add libraries
 library(openxlsx)
 library(ggplot2)
@@ -24,71 +26,66 @@ lognorm.sem <- function(x){sum((log(x)- mean(log(x)))^2/length(x[!is.na(x)]),na.
 
 ```
 
-# Introduction
-## Trial set-up
-NDV trial:
+<!-- # Introduction -->
+<!-- ## Trial set-up -->
+<!-- NDV trial: -->
 
-- Transmission in vaccinated and unvaccinated groups
+<!-- - Transmission in vaccinated and unvaccinated groups -->
 
-- Four separate groups (i.e. 2 replicates per treatment)
+<!-- - Four separate groups (i.e. 2 replicates per treatment) -->
 
-- Challenge in 10 out of 20 birds
+<!-- - Challenge in 10 out of 20 birds -->
 
-- ON- and CLO-swab at each day post challenge (DPI) for 14 days
+<!-- - ON- and CLO-swab at each day post challenge (DPI) for 14 days -->
 
-- ELISA at the end of the trial
-
-
+<!-- - ELISA at the end of the trial -->
 
 
-## Transmission parameteres
-\(R = \beta \cdot T_{inf}\)
-
-- Infectious period \(T_{inf}\) = number of days a bird is infectious
-
-- Transmission coefficient \(\beta\) = number of new infections by one infectious bird per day 
-
-- Reproduction ratio \(R\) = number of new infectious birds per infectious bird during its entire infectious period
 
 
-If \(R < 1\) an infection will go extinct.
+<!-- ## Transmission parameteres -->
+<!-- \(R = \beta \cdot T_{inf}\) -->
 
-## Research questions
-- What are the values of the transmission parameters?
-- Do the transmission parameters differ between vaccinated and unvaccinated groups?
-- Is the \(R\) in vaccinated groups below 1?
+<!-- - Infectious period \(T_{inf}\) = number of days a bird is infectious -->
+
+<!-- - Transmission coefficient \(\beta\) = number of new infections by one infectious bird per day  -->
+
+<!-- - Reproduction ratio \(R\) = number of new infectious birds per infectious bird during its entire infectious period -->
 
 
-<!-- ## Data -->
-<!-- Four different assumptions were used to estimate the transmission parameter. -->
-<!-- An animal is positive if: -->
-<!-- \begin{enumerate} -->
-<!-- \item one or both samples are positive -->
-<!-- \item both samples are positive -->
-<!-- \item the ON sample is positive -->
-<!-- \item the CLO sample is positive -->
-<!-- \end{enumerate} -->
+<!-- If \(R < 1\) an infection will go extinct. -->
+
+<!-- ## Research questions -->
+<!-- - What are the values of the transmission parameters? -->
+<!-- - Do the transmission parameters differ between vaccinated and unvaccinated groups? -->
+<!-- - Is the \(R\) in vaccinated groups below 1? -->
+
+
+## Data
+Samples are deemed positive if:
+\begin{itemize}
+\item CT <= 34
+\item Sub-threshold samples (34 < CT < 36), but previous or next sample is CT <= 34
+\end{itemize}
+Chicks are positive if one or both (CLO and ON) samples are positive.
+
+Result: 
+No inconsistent ELISA and CT-positive samples
+
+Only CLO is not possible and inconsistent with ELISA
+
+
 ```{r include = F }
 data.dir <- "C:/Surfdrive/Projecten/CEVA/"
 #read the data of the vaccination group
-# cevadata1A <- read.xlsx(paste0(data.dir,
-# "P062VectormuneNDtransmissionstudysheddingdata_setA_readible.xlsx"),
-#                       sheet = "Group1A")
-# cevadata2A <- read.xlsx(paste0(data.dir, "P062VectormuneNDtransmissionstudysheddingdata_setA_readible.xlsx"),
-#                         sheet = "Group2A")
-# cevadata1B <- read.xlsx(paste0(data.dir,
-# "P062VectormuneNDtransmissionstudysheddingdata_setB_readible.xlsx"),
-#                       sheet = "Group1B")
-# cevadata2B <- read.xlsx(paste0(data.dir, "P062VectormuneNDtransmissionstudysheddingdata_setB_readible.xlsx"),
-#                         sheet = "Group2B")
+
 
 cevadata.Manual <- read.xlsx(paste0(data.dir, "DataNDVtrial_manual_Egil 20200317_Timea20200319.xlsx"),
-                        sheet = "Input_seedercorrect")
+                        sheet = "Input_seedernotchanged")
 
-#cevadata <- rbind(cevadata1A,cevadata1B,cevadata2A,cevadata2B)
+cevadata.original <- read.xlsx(paste0(data.dir, "DataNDVtrial_manual_Egil 20200317_Timea20200319.xlsx"),
+                        sheet = "RAW (4)")
 
-#rename to standard
-#cevadata$ci <- sapply(cevadata$Challenge, FUN = function(x){ifelse(grepl("contact", x),"contact","seeder")})
 
 cevadata <- cevadata.Manual
 
@@ -113,22 +110,25 @@ The confidence interval is calculated by $\log(R) = \log(\beta)+\log(T_{inf})\pm
 
 Assumes independence between the transmission parameter and the infectious period.
 
-## Transmission model and further assumptions
-Transmission model
+<!-- ## Transmission model and further assumptions -->
+<!-- Transmission model -->
 
-- SIR: Susceptible \(\rightarrow\) Infectious\(\rightarrow\) Recovered and immune
+<!-- - SIR: Susceptible \(\rightarrow\) Infectious\(\rightarrow\) Recovered and immune -->
 
 <!-- - SI: Susceptible \(\rightarrow\) Infectious until end of experiment -->
 
-The determination of a single sample to be positive depends on two assumptions
+<!-- The determination of a single sample to be positive depends on two assumptions -->
 
-- Detection threshold (default set to Ct < 36)
+<!-- - Detection threshold (default set to Ct < 36) -->
 
-- Sample is positive if at least one consecutive sample is positive:  Pos , Neg , Pos, Pos = first positive is assumed to be negative, 3rd and 4th positive (same for negative but the opposite)
+<!-- - Sample is positive if at least one consecutive sample is positive:  Pos , Neg , Pos, Pos = first positive is assumed to be negative, 3rd and 4th positive (same for negative but the opposite) -->
 
-Or based on decision of Timea and Egil
+<!-- Or based on decision of Timea and Egil -->
 
 # Results
+
+
+
 
 ```{r, include = FALSE}
 # data.one.SIR <- reform.data(cevadata,
@@ -168,6 +168,7 @@ data.one.SIR.selection <- reform.SIR.data(data = cevadata,
 ```{r, fig.cap = 'Infection curves'}
 survivalplot
 ```
+
 ## Epidemic curve SIR and one or both positive
 ```{r, fig.cap = 'Infection curves'}
 epicurveplot
@@ -176,21 +177,16 @@ epicurveplot
 <!-- ```{r, fig.cap = 'Infection curves'} -->
 <!-- epicurveplotONCLO -->
 <!-- ``` -->
-## Further analysis based on epidemic curves
+<!-- ## Further analysis based on epidemic curves -->
 
-Further analyses will be presented for:
+<!-- Further analyses will be presented for: -->
 
-- One or both positive (at least one sample being positive)
+<!-- - One or both positive (at least one sample being positive) -->
 
 
 
 
 <!--  Infectious period -->
-```{r include = F}
-#creat a dataframe to collect results
-all.results <- NULL
-
-```
 
 ```{r, include = F}
 #get data to calculate infectious period
@@ -250,7 +246,7 @@ drop1(fit.one.SIR.inf.fixed.no.int, test = "F", ~.+Vaccinated + Challenge )
 
 ```
 <!-- Vaccination should be included in the model as well as challenge. -->
-## Statistical analyses ~ using parameteric survival analyses
+<!-- ## Statistical analyses ~ using parameteric survival analyses -->
 
 ```{r include =F}
 out.indiv.one.SIR$cens <- 1-as.numeric(out.indiv.one.SIR$`14.dpch` == 1)
@@ -268,13 +264,15 @@ summary(surv.fit.one.SIR.gaussian.sc)
 pvalueInf <- summary(surv.fit.one.SIR.gaussian)
 pvalueInf<- pvalueInf$table["VaccinatedYes","p"]
 ```
-Survival analyses assuming a Gaussian distributed \(T_{Inf}\) and only using the contact birds. 
-```{r}
-summary(surv.fit.one.SIR.gaussian)
-```
+<!-- Survival analyses assuming a Gaussian distributed \(T_{Inf}\) and only using the contact birds. -->
 
 
-## Transmission parameter \(\beta\)
+<!-- ```{r } -->
+<!-- signif(summary(surv.fit.one.SIR.gaussian)$table[c(1,2),],digits =3) -->
+<!-- ``` -->
+
+
+<!--## Transmission parameter \(\beta\)-->
 ```{r include = F}
 out.nona.one.SIR <- data.one.SIR[[1]][(!is.na(data.one.SIR[[1]]$S)&!is.na(data.one.SIR[[1]]$C) &data.one.SIR[[1]]$I>0 &data.one.SIR[[1]]$S>0),]
 
@@ -310,21 +308,20 @@ fit.one.SIR.fixed.profile.confint <- confint(fit.one.SIR.fixed);
 beta.table<- data.frame(rbind(cbind(treatment = "Unvac",beta = round(exp(fit.one.SIR.fixed$coefficients[[1]]), digits =3), round(t(exp(fit.one.SIR.fixed.profile.confint[1,])),digits =3)),
 cbind(treatment = "Vac", beta = round(exp(sum(fit.one.SIR.fixed$coefficients)),digits =3), round(t(exp(fit.one.SIR.fixed.profile.confint[2,]+fit.one.SIR.fixed$coefficients[[1]])),digits =3))));
 colnames(beta.table)<- c("Treatment", "beta","2.5%","97.5")
+
+
+pvalueBeta <- summary(fit.one.SIR.fixed)$coefficients[2,4]
+
+
 ```
 
 
-```{r}
-summary(fit.one.SIR.fixed)
+<!-- ## \(\beta\) estimates -->
+<!-- ```{r} -->
+<!-- beta.table -->
 
-```
+<!-- ``` -->
 
-
-## \(\beta\) estimates
-```{r}
-beta.table
-
-```
-Vaccination does not lower the infection parameter \(\beta\).
 
 <!-- ## Basic reproduction number \(R_0\) -->
 ```{r, include = F}
@@ -363,38 +360,41 @@ mean.beta.inf.R$ulR <- exp(mean.beta.inf.R$ullogR0)
 rownames(mean.beta.inf.R)<- NULL
 ```
 
-## Summarize ~ infectious period
+## Infectious period
 ```{r}
 
 mean.beta.inf.R[, c(1,5,6,7)]
 
 ```
-Vaccine reduces length of infectious period (p = 
+p = 
 ```{r} 
-pvalueInf
+signif(pvalueInf,2)
 ```
-)
 
-## Summarize ~ \(\beta\)
+
+##  \(\beta\)
 ```{r}
 
 mean.beta.inf.R[, c(1,2,3,4)]
 
 ```
-No difference is transmission rate
+p-value:
+```{r}
+signif(pvalueBeta,2)
+```
 
-## Summarize ~ \(R\)
+## \(R\)
 ```{r}
 
 mean.beta.inf.R[, c(1,11,12,13)]
 
 ```
-No difference in reproduction number
+
 
 # Conclusion and discussion
 
 ## Conclusion
-Based on the assumption of one of both samples required to be positive, we find that the transmission parameter \(\beta\) is not lower, but the mean infectious period \(T_{inf}\)in the contact birds is lower, which results in a reproduction number \(R\) which is  smaller (although not statistically significant), but is not lower than the threshold \(R \leq 1\).
+Based on the assumption of one of both samples required to be positive, we find that the transmission parameter \(\beta\) is lower, and the mean infectious period \(T_{inf}\)in the contact birds is lower, which results in a reproduction number \(R\) which is  smaller, but is not lower than the threshold \(R \leq 1\).
 <!-- ```{r include = F} -->
 <!--  all.results <- rbind(all.results, cbind(Assumption = "OneOrBoth", mean.beta.inf.R)) -->
 
@@ -404,25 +404,149 @@ Based on the assumption of one of both samples required to be positive, we find 
 
 <!-- ## SI model -->
 
-## Optional additional analyses
-Preliminary results (models not checked)
-
-- Different Ct as cut-off: e.g if Ct = 30, \(\beta\) lower values for vaccinated, \(T_{inf}\) cannot be estimated 
-
-
-- One positive sample means that animal is positive and first negative is negative: \(\beta\) lower values for vaccinated, and \(T_{inf}\) lower for vaccinated
-
-Following no preliminary results
-
-- Only base results on ON swabs
-
-- SI model
-
-- Use ELISA to determine infection yes/no.
+# Additional assessment
 
 
 
+## Compare CT value 
+For those that were defined positive
+```{r include = F}
+ct.data <- cevadata.original
+for(day in c(6:19))
+{
+  
+  ct.data[cevadata.Manual[,day]!=1|is.na(cevadata.Manual[,day]),day]<- NA
+  
 
+
+}
+melt.ct.data<- reshape2::melt( ct.data[,c(2,5:19,21)],id.vars = c("Vaccinated",
+                                                   "Sample",
+                                                   "ci"))
+melt.ct.data$value <- as.numeric(melt.ct.data$value)
+melt.ct.data$valueP <- melt.ct.data$value
+melt.ct.data$valueP[melt.ct.data$value == 36] <- NA
+
+drop1(lm(valueP ~ ci + Sample + Vaccinated, data= melt.ct.data))
+```
+```{r}
+signif(summary(lm(valueP ~ ci + Sample + Vaccinated, data= melt.ct.data))$coefficients,2)
+summary(lm(valueP ~ ci, data= melt.ct.data[melt.ct.data$Vaccinated=="Yes"& melt.ct.data$Sample=="ON swab",]))
+summary(lm(valueP ~ ci, data= melt.ct.data[melt.ct.data$Vaccinated=="No"& melt.ct.data$Sample=="ON swab",]))
+```
+
+
+<!-- ## Compare CT value ON swab -->
+<!-- ```{r} -->
+<!-- anova(lm(valueP ~ Vaccinated + ci, data= melt.ct.data[melt.ct.data$Sample == "ON swab",])) -->
+<!-- ``` -->
+<!-- ## Compare CT value CLO swab -->
+<!-- ```{r} -->
+<!-- anova(lm(valueP ~ Vaccinated + ci, data= melt.ct.data[melt.ct.data$Sample == "CLO swab",])) -->
+<!-- ``` -->
+
+## Seeder acted as contact
+Two seeder bird #817 and #818 in unvaccinated were positive slower. These were transfered to the contact group.
+```{r include = F}
+#data
+cevadata.Manual <- read.xlsx(paste0(data.dir, "DataNDVtrial_manual_Egil 20200317_Timea20200319.xlsx"),
+                        sheet = "Input_seedercorrect")
+cevadata <- cevadata.Manual
+
+
+data.one.SIR.selection <- reform.SIR.data(data = cevadata,
+                                sampleday.vars= paste0(c(1:14),".dpch"),
+                                exclude.seeder = T )
+
+#get data to calculate infectious period
+out.indiv.one.SIR<- data.one.SIR[[2]];
+out.indiv.one.SIR$infper <- apply(data.one.SIR[[2]][,c(5:18)]==1, 1, sum, na.rm = T);
+out.indiv.one.SIR[out.indiv.one.SIR$infper == 0,]$infper<- NA #zero means never been infected
+
+#data for beta
+out.nona.one.SIR <- data.one.SIR[[1]][(!is.na(data.one.SIR[[1]]$S)&!is.na(data.one.SIR[[1]]$C) &data.one.SIR[[1]]$I>0 &data.one.SIR[[1]]$S>0),]
+
+#calculations
+# infectious period
+out.indiv.one.SIR$cens <- 1-as.numeric(out.indiv.one.SIR$`14.dpch` == 1)
+out.indiv.one.SIR$cens[is.na(out.indiv.one.SIR$cens)] <- 1
+
+surv.fit.one.SIR.gaussian <- survival::survreg(survival::Surv(infper,cens)~ Vaccinated , dist = "gaussian",data = out.indiv.one.SIR[out.indiv.one.SIR$Challenge == "contact",], na.action = na.omit)
+
+drop1(surv.fit.one.SIR.gaussian,test = "Chisq")
+pvalueInf <- summary(surv.fit.one.SIR.gaussian)$table["VaccinatedYes","p"]
+pvalueInf
+
+#beta
+fit.one.SIR.fixed <- glm(cbind(C, S-C) ~ Vaccinated ,
+                offset = log(I/N),
+                family = binomial(link = "cloglog"), data = out.nona.one.SIR, na.action = na.omit)
+
+fit.one.SIR.fixed.profile.confint <- confint(fit.one.SIR.fixed);
+#beta's
+beta.table<- data.frame(rbind(cbind(treatment = "Unvac",beta = round(exp(fit.one.SIR.fixed$coefficients[[1]]), digits =3), round(t(exp(fit.one.SIR.fixed.profile.confint[1,])),digits =3)),
+cbind(treatment = "Vac", beta = round(exp(sum(fit.one.SIR.fixed$coefficients)),digits =3), round(t(exp(fit.one.SIR.fixed.profile.confint[2,]+fit.one.SIR.fixed$coefficients[[1]])),digits =3))));
+colnames(beta.table)<- c("Treatment", "beta","2.5%","97.5")
+
+
+pvalueBeta <- summary(fit.one.SIR.fixed)$coefficients[2,4]
+
+#R0
+#calculate R0
+ alpha = 0.05 #conf.level
+#beta
+mean.logbeta <- summary(fit.one.SIR.fixed)$coefficients[,1]
+confint.logbeta<- fit.one.SIR.fixed.profile.confint
+
+#infectious period
+mean.inf.per <- summary(surv.fit.one.SIR.gaussian)$coefficients[1:2]
+confint.inf.per <- confint(surv.fit.one.SIR.gaussian)[1:2,]
+confint.inf.per[2,]<- confint.inf.per[1, ] +confint.inf.per[2, ]
+
+#log infectious period
+mean.log.inf.per <- log(cumsum(mean.inf.per))
+confint.log.inf.per <- log(confint.inf.per)
+
+#R
+mean.beta.inf.R <- data.frame(Vaccinated = c("No","Yes"),
+                      beta = exp(cumsum(mean.logbeta)),
+                      llbeta = exp(cumsum(confint.logbeta[,1])),
+                      ulbeta = exp(cumsum(confint.logbeta[,2])),
+                      infper = cumsum(mean.inf.per),
+                      llinfper = confint.inf.per[,1],
+                      ulinfper = confint.inf.per[,2],
+                      logR0 = cumsum(mean.logbeta)+mean.log.inf.per,
+                      lllogR0 = cumsum(mean.logbeta  + confint.logbeta[,1]) + log(confint.inf.per[,1]),
+                      ullogR0 = cumsum(mean.logbeta  + confint.logbeta[,2]) + log(confint.inf.per[,2])
+)
+
+
+mean.beta.inf.R$R <- exp(mean.beta.inf.R$logR0)
+mean.beta.inf.R$llR <- exp(mean.beta.inf.R$lllogR0)
+mean.beta.inf.R$ulR <- exp(mean.beta.inf.R$ullogR0)
+rownames(mean.beta.inf.R)<- NULL
+
+
+
+```
+
+## INfectious period
+```{r}
+#
+mean.beta.inf.R[, c(1,5,6,7)]
+pvalueInf
+
+```
+## Transmision parameter
+```{r}
+mean.beta.inf.R[, c(1,2,3,4)]
+pvalueBeta
+```
+## Reproduction number
+```{r}
+mean.beta.inf.R[, c(1,11,12,13)]
+
+```
 
 <!-- # Appendices -->
 <!-- ## Model diagnostics -->

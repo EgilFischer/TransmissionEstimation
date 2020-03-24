@@ -1,0 +1,441 @@
+---
+title: "NDVtrailPresentation"
+author: "Egil Fischer"
+date: "9-3-2020"
+output:
+  beamer_presentation: 
+   theme: Berkeley
+   slide_level: 2
+  ioslides_presentation: default
+  powerpoint_presentation: default
+  slidy_presentation: default
+---
+
+```{r setup, include=FALSE}
+#add libraries
+library(openxlsx)
+library(ggplot2)
+library(lme4)
+#source functions
+source("TransmissionExperimentDatamodel.R")
+#standard error function
+sem <- function(x){sd(x,na.rm =T)/sqrt(length(x[!is.na(x)]))}
+lognorm.sem <- function(x){sum((log(x)- mean(log(x)))^2/length(x[!is.na(x)]),na.rm =T) / length(x[!is.na(x)])}
+
+```
+
+# Introduction
+## Trial set-up
+NDV trial:
+
+- Transmission in vaccinated and unvaccinated groups
+
+- Four separate groups (i.e. 2 replicates per treatment)
+
+- Challenge in 10 out of 20 birds
+
+- ON- and CLO-swab at each day post challenge (DPI) for 14 days
+
+- ELISA at the end of the trial
+
+
+
+
+## Transmission parameteres
+\(R = \beta \cdot T_{inf}\)
+
+- Infectious period \(T_{inf}\) = number of days a bird is infectious
+
+- Transmission coefficient \(\beta\) = number of new infections by one infectious bird per day 
+
+- Reproduction ratio \(R\) = number of new infectious birds per infectious bird during its entire infectious period
+
+
+If \(R < 1\) an infection will go extinct.
+
+## Research questions
+- What are the values of the transmission parameters?
+- Do the transmission parameters differ between vaccinated and unvaccinated groups?
+- Is the \(R\) in vaccinated groups below 1?
+
+
+<!-- ## Data -->
+<!-- Four different assumptions were used to estimate the transmission parameter. -->
+<!-- An animal is positive if: -->
+<!-- \begin{enumerate} -->
+<!-- \item one or both samples are positive -->
+<!-- \item both samples are positive -->
+<!-- \item the ON sample is positive -->
+<!-- \item the CLO sample is positive -->
+<!-- \end{enumerate} -->
+```{r include = F }
+data.dir <- "C:/Surfdrive/Projecten/CEVA/"
+#read the data of the vaccination group
+cevadata1A <- read.xlsx(paste0(data.dir,
+"P062VectormuneNDtransmissionstudysheddingdata_setA_readible.xlsx"),
+                      sheet = "Group1A")
+cevadata2A <- read.xlsx(paste0(data.dir, "P062VectormuneNDtransmissionstudysheddingdata_setA_readible.xlsx"),
+                        sheet = "Group2A")
+cevadata1B <- read.xlsx(paste0(data.dir,
+"P062VectormuneNDtransmissionstudysheddingdata_setB_readible.xlsx"),
+                      sheet = "Group1B")
+cevadata2B <- read.xlsx(paste0(data.dir, "P062VectormuneNDtransmissionstudysheddingdata_setB_readible.xlsx"),
+                        sheet = "Group2B")
+
+cevadata <- rbind(cevadata1A,cevadata1B,cevadata2A,cevadata2B)
+
+#rename to standard
+cevadata$ci <- sapply(cevadata$Challenge, FUN = function(x){ifelse(grepl("contact", x),"contact","seeder")})
+
+```
+# Material and methods
+## Visualization of descriptive data
+- Survival plot
+
+- Epidemic curves (number of infectious animals divided by the total) were produced.
+
+- Histogram of infectious period
+
+## Statistical analyses
+The infectious period \(T_{inf}\): Parametric survival analyses assuming Normal distribution
+
+The transmission parameter \(\beta\): Generalized linear model with a complementary loglog-link function:
+
+`glm(cbind(C, S-C) ~ 1,offset = log(I/N), family = binomial(link = "cloglog"), data = data.set, na.action = na.omit)`
+
+The basic reproduction number \(\textit{R}_0 = \beta \cdot T_{inf}\)
+The confidence interval is calculated by $\log(R) = \log(\beta)+\log(T_{inf})\pm Z_{0.05} \cdot (\log(SE(\beta)) +\log(SE(T_{inf}))$
+
+Assumes independence between the transmission parameter and the infectious period.
+
+## Transmission model and further assumptions
+Transmission model
+
+- SIR: Susceptible \(\rightarrow\) Infectious\(\rightarrow\) Recovered and immune
+
+<!-- - SI: Susceptible \(\rightarrow\) Infectious until end of experiment -->
+
+The determination of a single sample to be positive depends on two assumptions
+
+- Detection threshold (default set to Ct < 36)
+
+- Sample is positive if at least one consecutive sample is positive:  Pos , Neg , Pos, Pos = first positive is assumed to be negative, 3rd and 4th positive (same for negative but the opposite)
+
+
+
+# Results
+
+```{r, include = FALSE}
+data.one.SIR <- reform.data(cevadata,
+                                sampleday.vars = paste0(c(1:14),".dpch"),
+                                model = "SIR",
+                                positive.if = "max",
+                                inf.rule = 2,
+                                rec.rule = 2,
+                                cut.off = 36)
+
+epicurveplot <- ggplot(data = cbind(data.one.SIR[[1]], pos = "At least one sample positive" )) +
+  geom_path(aes(x = ndpch, y = I/N, colour = Vaccinated, group = Group))+
+  geom_point(aes(x = ndpch, y = I/N, shape =  Group))+
+  xlab("Day post inoculation")+ylab("Prevalence (I/N)")
+
+survivalplot <- ggplot(data = data.one.SIR[[1]]) +
+  geom_path(aes(x = ndpch, y = N, colour = Vaccinated, group = Group))+
+  geom_point(aes(x = ndpch, y = N, shape =  Group))+
+  xlab("Day post inoculation")+ylab("Number of chickens (N)")
+
+
+data.ON.positive <- reform.data(cevadata[cevadata$Sample == "ON swab",],
+                                sampleday.vars = paste0(c(1:14),".dpch"),
+                                positive.if = "max",
+                                cut.off = 36,
+                                model = "SIR",
+                                inf.rule = 2,
+                                rec.rule =2)
+data.CLO.positive <- reform.data(cevadata[cevadata$Sample == "CLO swab",],
+                                sampleday.vars = paste0(c(1:14),".dpch"),
+                                positive.if = "max",
+                                cut.off = 36,
+                                model = "SIR",
+                                inf.rule = 2,
+                                rec.rule =2)
+
+epicurveplotONCLO <- ggplot(data = rbind(cbind(data.ON.positive[[1]], pos = "ON swab"),cbind(data.CLO.positive[[1]], pos = "CLO swab" ))) +
+  geom_path(aes(x = ndpch, y = I/N, colour = Vaccinated, group = Group))+
+  geom_point(aes(x = ndpch, y = I/N, shape =  Group))+
+  facet_grid(.~pos)+xlab("Day post inoculation")+ylab("Prevalence (I/N)")
+
+```
+
+## Survival curve
+```{r, fig.cap = 'Infection curves'}
+survivalplot
+```
+## Epidemic curve SIR and one or both positive
+```{r, fig.cap = 'Infection curves'}
+epicurveplot
+```
+## Epidemic curve SIR and one or both positive
+```{r, fig.cap = 'Infection curves'}
+epicurveplotONCLO
+```
+## Further analysis based on epidemic curves
+
+Further analyses will be presented for:
+
+- One or both positive (at least one sample being positive)
+
+
+
+
+<!--  Infectious period -->
+```{r include = F}
+#creat a dataframe to collect results
+all.results <- NULL
+
+```
+
+```{r, include = F}
+#get data to calculate infectious period
+out.indiv.one.SIR<- data.one.SIR[[2]];
+out.indiv.one.SIR$infper <- apply(data.one.SIR[[2]][,c(5:18)]==1, 1, sum, na.rm = T);
+out.indiv.one.SIR[out.indiv.one.SIR$infper == 0,]$infper<- NA #zero means never been infected
+
+out.indiv.one.SIR[out.indiv.one.SIR$Vaccinated =="Yes",c("Vaccinated","Challenge","infper")]
+```
+
+## \(T_{inf}\) at least one (CLO or ON) positive sample
+```{r include = F}
+#visualize
+hist.one <- ggplot(data = out.indiv.one.SIR) +
+  geom_histogram(aes(x = infper, y = ..density.., fill = Vaccinated),
+                 position = "dodge",binwidth = 1, na.rm = T)+
+  ggtitle("Distribution of infectious period with at least one sample pos")+
+  xlab("Infectious period")
+```
+
+```{r}
+hist.one
+```
+
+## \(T_{inf}\) at least one (CLO or ON) positive sample
+```{r include = F}
+hist.one.chal <- ggplot(data = out.indiv.one.SIR) +
+  geom_histogram(aes(x = infper, y = ..density.., fill = Vaccinated),
+                 position = "dodge",binwidth = 1, na.rm = T)+
+  ggtitle("Distribution of infectious period with at least one sample pos")+
+  xlab("Infectious period") +facet_grid(.~Challenge)
+```
+
+```{r}
+hist.one.chal
+```
+
+<!-- ## Statistical analyses ~ fixed vs random effects model -->
+```{r include = F}
+
+fit.one.SIR.inf.mm<-lmer(infper ~ Vaccinated + Challenge + Challenge*Vaccinated+ (1|Group),data = out.indiv.one.SIR)
+out.indiv.one.SIR$OneGroup = "G"
+fit.one.SIR.inf.fixed<-lm(infper ~ Vaccinated + Challenge + Challenge*Vaccinated,data = out.indiv.one.SIR)
+fit.one.SIR.inf.fixed.no.int <- lm(infper ~ Vaccinated + Challenge ,data = out.indiv.one.SIR)
+#Compare mixed-model to fixed effects model
+anova(fit.one.SIR.inf.mm,fit.one.SIR.inf.fixed)
+anova(fit.one.SIR.inf.fixed.no.int,fit.one.SIR.inf.fixed)
+
+```
+
+<!-- The random effect "Group" can be ignored and the interaction term "Challenge x Vaccinated" also. -->
+<!-- ## Statistical analyses ~ fixed vs random effects model -->
+```{r include = F}
+
+#Compare mixed-model to fixed effects model
+drop1(fit.one.SIR.inf.fixed.no.int, test = "F", ~.+Vaccinated + Challenge )
+
+```
+<!-- Vaccination should be included in the model as well as challenge. -->
+## Statistical analyses ~ using parameteric survival analyses
+
+```{r include =F}
+out.indiv.one.SIR$cens <- 1-as.numeric(out.indiv.one.SIR$`14.dpch` == 1)
+out.indiv.one.SIR$cens[is.na(out.indiv.one.SIR$cens)] <- 1
+surv.fit.one.SIR.exponential <- survival::survreg(survival::Surv(infper,cens)~ Vaccinated, dist = "exponential",data = out.indiv.one.SIR[out.indiv.one.SIR$Challenge == "contact",], na.action = na.omit)
+surv.fit.one.SIR.gaussian <- survival::survreg(survival::Surv(infper,cens)~ Vaccinated , dist = "gaussian",data = out.indiv.one.SIR[out.indiv.one.SIR$Challenge == "contact",], na.action = na.omit)
+
+surv.fit.one.SIR.gaussian.sc <- survival::survreg(survival::Surv(infper,cens)~ Vaccinated+Challenge, dist = "gaussian",data = out.indiv.one.SIR, na.action = na.omit)
+
+drop1(surv.fit.one.SIR.gaussian.sc)
+anova(surv.fit.one.SIR.gaussian,surv.fit.one.SIR.exponential, test ="Chisq")
+drop1(surv.fit.one.SIR.gaussian,test = "Chisq")
+summary(surv.fit.one.SIR.gaussian.sc)
+
+```
+Survival analyses assuming a Gaussian distributed \(T_{Inf}\) and only using the contact birds. 
+```{r}
+summary(surv.fit.one.SIR.gaussian)
+```
+
+
+## Transmission parameter \(\beta\)
+```{r include = F}
+out.nona.one.SIR <- data.one.SIR[[1]][(!is.na(data.one.SIR[[1]]$S)&!is.na(data.one.SIR[[1]]$C) &data.one.SIR[[1]]$I>0 &data.one.SIR[[1]]$S>0),]
+
+```
+
+```{r include = F}
+#GLM
+fit.one.SIR.mm <- glmer(cbind(C, S-C) ~Vaccinated+
+                  (1|Group),
+                offset = log(I/N),
+                family = binomial(link = "cloglog"), data = out.nona.one.SIR, na.action = na.omit)
+fit.one.SIR.fixed <- glm(cbind(C, S-C) ~ Vaccinated ,
+                offset = log(I/N),
+                family = binomial(link = "cloglog"), data = out.nona.one.SIR, na.action = na.omit)
+
+```
+<!-- ## Compare model fits -->
+```{r include = F}
+#compare model with and without random effect. If there is no difference use the model without random effect
+anova(fit.one.SIR.mm, fit.one.SIR.fixed)
+```
+
+<!-- ## Determine best model -->
+```{r include = F}
+drop1(fit.one.SIR.fixed)
+summary(fit.one.SIR.fixed)
+```
+
+
+```{r, include = F}
+fit.one.SIR.fixed.profile.confint <- confint(fit.one.SIR.fixed);
+#beta's
+beta.table<- data.frame(rbind(cbind(treatment = "Unvac",beta = round(exp(fit.one.SIR.fixed$coefficients[[1]]), digits =3), round(t(exp(fit.one.SIR.fixed.profile.confint[1,])),digits =3)),
+cbind(treatment = "Vac", beta = round(exp(sum(fit.one.SIR.fixed$coefficients)),digits =3), round(t(exp(fit.one.SIR.fixed.profile.confint[2,]+fit.one.SIR.fixed$coefficients[[1]])),digits =3))));
+colnames(beta.table)<- c("Treatment", "beta","2.5%","97.5")
+```
+
+
+```{r}
+summary(fit.one.SIR.fixed)
+
+```
+
+
+## \(\beta\) estimates
+```{r}
+beta.table
+
+```
+Vaccination does not lower the infection parameter \(\beta\).
+
+<!-- ## Basic reproduction number \(R_0\) -->
+```{r, include = F}
+#calculate R0
+ alpha = 0.05 #conf.level
+#beta
+mean.logbeta <- summary(fit.one.SIR.fixed)$coefficients[,1]
+confint.logbeta<- fit.one.SIR.fixed.profile.confint
+
+#infectious period
+mean.inf.per <- summary(surv.fit.one.SIR.gaussian)$coefficients[1:2]
+confint.inf.per <- confint(surv.fit.one.SIR.gaussian)[1:2,]
+confint.inf.per[2,]<- confint.inf.per[1, ] +confint.inf.per[2, ]
+
+#log infectious period
+mean.log.inf.per <- log(cumsum(mean.inf.per))
+confint.log.inf.per <- log(confint.inf.per)
+
+#R
+mean.beta.inf.R <- data.frame(Vaccinated = c("No","Yes"),
+                      beta = exp(cumsum(mean.logbeta)),
+                      llbeta = exp(cumsum(confint.logbeta[,1])),
+                      ulbeta = exp(cumsum(confint.logbeta[,2])),
+                      infper = cumsum(mean.inf.per),
+                      llinfper = confint.inf.per[,1],
+                      ulinfper = confint.inf.per[,2],
+                      logR0 = cumsum(mean.logbeta)+mean.log.inf.per,
+                      lllogR0 = cumsum(mean.logbeta  + confint.logbeta[,1]) + log(confint.inf.per[,1]),
+                      ullogR0 = cumsum(mean.logbeta  + confint.logbeta[,2]) + log(confint.inf.per[,2])
+)
+
+
+mean.beta.inf.R$R <- exp(mean.beta.inf.R$logR0)
+mean.beta.inf.R$llR <- exp(mean.beta.inf.R$lllogR0)
+mean.beta.inf.R$ulR <- exp(mean.beta.inf.R$ullogR0)
+rownames(mean.beta.inf.R)<- NULL
+```
+
+## Summarize ~ infectious period
+```{r}
+
+mean.beta.inf.R[, c(1,5,6,7)]
+
+```
+Vaccine reduces length of infectious period (p = 0.004)
+
+## Summarize ~ \(\beta\)
+```{r}
+
+mean.beta.inf.R[, c(1,2,3,4)]
+
+```
+No difference is transmission rate
+
+## Summarize ~ \(R\)
+```{r}
+
+mean.beta.inf.R[, c(1,11,12,13)]
+
+```
+No difference in reproduction number
+
+# Conclusion and discussion
+
+## Conclusion
+Based on the assumption of one of both samples required to be positive, we find that the transmission parameter \(\beta\) is not lower, but the mean infectious period \(T_{inf}\)in the contact birds is lower, which results in a reproduction number \(R\) which is  smaller (although not statistically significant), but is not lower than the threshold \(R \leq 1\).
+<!-- ```{r include = F} -->
+<!--  all.results <- rbind(all.results, cbind(Assumption = "OneOrBoth", mean.beta.inf.R)) -->
+
+<!-- ``` -->
+
+<!-- ## ON swabs -->
+
+<!-- ## SI model -->
+
+## Optional additional analyses
+Preliminary results (models not checked)
+
+- Different Ct as cut-off: e.g if Ct = 30, \(\beta\) lower values for vaccinated, \(T_{inf}\) cannot be estimated 
+
+
+- One positive sample means that animal is positive and first negative is negative: \(\beta\) lower values for vaccinated, and \(T_{inf}\) lower for vaccinated
+
+Following no preliminary results
+
+- Only base results on ON swabs
+
+- SI model
+
+- Use ELISA to determine infection yes/no.
+
+
+
+
+
+<!-- # Appendices -->
+<!-- ## Model diagnostics -->
+
+<!-- ## Model diagnostics -->
+
+<!--## Compare raw data with reformed data-->
+```{r include = F}
+if(file.exists("compareOne.xlsx")) {file.remove("compareOne.xlsx")}
+wb <- createWorkbook(creator = "Egil A. J. Fischer")
+addWorksheet(wb,   sheetName = "RAW")
+addWorksheet(wb,   sheetName = "Reform")
+writeData(wb, sheet = "RAW",cevadata[order(cevadata$bird.id),], colNames = T)
+writeData(wb, sheet = "Reform", out.indiv.one.SIR[order(out.indiv.one.SIR$bird.id),], colNames = T)
+saveWorkbook(wb, file = "compareOne.xlsx")
+
+```
+
+
