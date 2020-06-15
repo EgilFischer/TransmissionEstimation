@@ -18,6 +18,7 @@ options("getSymbols.warning4.0"=FALSE)
 library(openxlsx)
 library(ggplot2)
 library(lme4)
+library(survival)
 #source functions
 source("TransmissionExperimentDatamodel.R")
 #standard error function
@@ -567,4 +568,8 @@ saveWorkbook(wb, file = file.name)
 
 ```
 
+## Information on versions
+```{r}
+sessionInfo()
+```
 
