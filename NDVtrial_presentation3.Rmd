@@ -215,12 +215,21 @@ hist.one
 ## \(T_{inf}\) at least one (CLO or ON) positive sample
 ```{r include = F}
 hist.one.chal <- ggplot(data = out.indiv.one.SIR) +
-  geom_histogram(aes(x = infper, y = ..density.., fill = Vaccinated),
+  geom_histogram(aes(x = infper, y = ..density..), fill = "white",colour = "black",
                  position = "dodge",binwidth = 1, na.rm = T)+
+  scale_x_continuous(breaks = c(0:10))+
   ggtitle("Distribution of infectious period with at least one sample pos")+
-  xlab("Infectious period") +facet_grid(.~Challenge)
+  ylab("Fraction")+
+  xlab("Infectious period (days)") +
+  #theme(panel.background = NULL,  legend.position = "none")+
+  theme_bw()+
+  facet_grid(Vaccinated ~ Challenge,
+             labeller = labeller(
+        Vaccinated = c("No" = "Unvaccinated", "Yes" = "Vaccinated"),
+        Challenge = c("contact" = "Contact", "seeder" = "Seeder")
+    )) 
+ggsave("InfectiousPeriodCEVA.tiff",hist.one.chal)
 ```
-
 ```{r}
 hist.one.chal
 ```
