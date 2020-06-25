@@ -87,6 +87,8 @@ cevadata.Manual <- read.xlsx(paste0(data.dir, "DataNDVtrial_manual_Egil 20200317
 cevadata.original <- read.xlsx(paste0(data.dir, "DataNDVtrial_manual_Egil 20200317_Timea20200319.xlsx"),
                         sheet = "RAW (4)")
 
+cevadata.CT <- read.xlsx(paste0(data.dir, "DataNDVtrial_manual_Egil 20200317_Timea20200319.xlsx"),
+                        sheet = "RAW (4)")
 
 cevadata <- cevadata.Manual
 
@@ -165,6 +167,11 @@ data.one.SIR.selection <- reform.SIR.data(data = cevadata,
                                 exclude.seeder = T )
 ```
 
+## Area Under the Curve
+```{r include = F}
+cevadata
+``` 
+
 ## Survival curve
 ```{r, fig.cap = 'Infection curves'}
 survivalplot
@@ -218,7 +225,7 @@ hist.one.chal <- ggplot(data = out.indiv.one.SIR) +
   geom_histogram(aes(x = infper, y = ..density..), fill = "white",colour = "black",
                  position = "dodge",binwidth = 1, na.rm = T)+
   scale_x_continuous(breaks = c(0:10))+
-  ggtitle("Distribution of infectious period with at least one sample pos")+
+  ggtitle("Distribution of infectious period")+
   ylab("Fraction")+
   xlab("Infectious period (days)") +
   #theme(panel.background = NULL,  legend.position = "none")+
@@ -233,7 +240,29 @@ ggsave("InfectiousPeriodCEVA.tiff",hist.one.chal)
 ```{r}
 hist.one.chal
 ```
-
+# \(T_{inf}\) at least one (CLO or ON) positive sample
+```{r include = F}
+out.indiv.one.SIR$Vaccinated<-factor(out.indiv.one.SIR$Vaccinated, levels = c("Yes","No"))
+hist.one.chal.v2 <- ggplot(data = out.indiv.one.SIR) +
+  geom_histogram(aes(x = infper, y = ..density.. , fill = Vaccinated), colour = "black",
+                 position = "dodge",binwidth = 1, na.rm = T)+
+  scale_fill_manual(values=c("Yes" = "white","No" = "grey"))+
+  scale_x_continuous(breaks = c(0:10))+
+  ggtitle("Distribution of infectious period")+
+  ylab("Fraction")+
+  xlab("Infectious period (days)") +
+  #theme(panel.background = NULL,  legend.position = "none")+
+  theme_bw()+
+  facet_grid( ~ Challenge,
+             labeller = labeller(
+       # Vaccinated = c("No" = "Unvaccinated", "Yes" = "Vaccinated"),
+        Challenge = c("contact" = "Contact", "seeder" = "Seeder")
+    )) 
+ggsave("InfectiousPeriodCEVAv2.tiff",hist.one.chal.v2)
+```
+```{r}
+hist.one.chal.v2
+```
 <!-- ## Statistical analyses ~ fixed vs random effects model -->
 ```{r include = F}
 
@@ -401,6 +430,7 @@ mean.beta.inf.R[, c(1,11,12,13)]
 ```
 
 
+
 # Conclusion and discussion
 
 ## Conclusion
@@ -422,22 +452,57 @@ Based on the assumption of one of both samples required to be positive, we find 
 For those that were defined positive
 ```{r include = F}
 ct.data <- cevadata.original
-for(day in c(6:19))
-{
+for(day in c(6:19)){
   
   ct.data[cevadata.Manual[,day]!=1|is.na(cevadata.Manual[,day]),day]<- NA
   
 
 
 }
-melt.ct.data<- reshape2::melt( ct.data[,c(2,5:19,21)],id.vars = c("Vaccinated",
-                                                   "Sample",
-                                                   "ci"))
-melt.ct.data$value <- as.numeric(melt.ct.data$value)
-melt.ct.data$valueP <- melt.ct.data$value
-melt.ct.data$valueP[melt.ct.data$value == 36] <- NA
+names(ct.data)
+ct.data$AUC <- as.numeric(sapply(c(1:length(ct.data$Group)), function(j){sum(36-as.numeric(ct.data[j,6:19]), na.rm = T)}) )
 
-drop1(lm(valueP ~ ci + Sample + Vaccinated, data= melt.ct.data))
+ctauc <- aggregate(formula = AUC ~ Vaccinated+ci+Sample,
+          data = ct.data,
+          FUN = "mean")
+ctauc$sd<-aggregate(formula = AUC ~ Vaccinated+ci+Sample,
+          data = ct.data,
+          FUN = "sd")$AUC
+ctauc$n<-aggregate(formula = AUC ~ Vaccinated+ci+Sample,
+          data = ct.data,
+          FUN = "length")$AUC
+#combine all categories
+ct.data$category <- paste0(ct.data$Vaccinated,".",ct.data$ci)
+#overall test
+kruskal.test(formula = AUC ~ category,data = ct.data[ct.data$Sample == "ON swab",])
+kruskal.test(formula = AUC ~ category,data = ct.data[ct.data$Sample == "CLO swab",])
+#test seed - contact per treatment
+wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == "ON swab"&ct.data$Vaccinated =="Yes",])
+wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == "ON swab"&ct.data$Vaccinated =="No",])
+#test vaccinated versus unvaccinated stratified by seeder-contact
+wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == "ON swab"&ct.data$ci =="seeder",])
+wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == "ON swab"&ct.data$ci =="contact",])
+
+#test seed - contact per treatment
+wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == "CLO swab"&ct.data$Vaccinated =="Yes",])
+wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == "CLO swab"&ct.data$Vaccinated =="No",])
+#test vaccinated versus unvaccinated stratified by seeder-contact
+wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == "CLO swab"&ct.data$ci =="seeder",])
+wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == "CLO swab"&ct.data$ci =="contact",])
+
+
+
+
+
+
+# melt.ct.data<- reshape2::melt( ct.data[,c(2,5:19,21)],id.vars = c("Vaccinated",
+#                                                    "Sample",
+#                                                    "ci"))
+# melt.ct.data$value <- as.numeric(melt.ct.data$value)
+# melt.ct.data$valueP <- melt.ct.data$value
+# melt.ct.data$valueP[melt.ct.data$value == 36] <- NA
+# 
+# drop1(lm(valueP ~ ci + Sample + Vaccinated, data= melt.ct.data))
 ```
 ```{r}
 signif(summary(lm(valueP ~ ci + Sample + Vaccinated, data= melt.ct.data))$coefficients,2)
