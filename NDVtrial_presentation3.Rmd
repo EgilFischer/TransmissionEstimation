@@ -87,8 +87,7 @@ cevadata.Manual <- read.xlsx(paste0(data.dir, "DataNDVtrial_manual_Egil 20200317
 cevadata.original <- read.xlsx(paste0(data.dir, "DataNDVtrial_manual_Egil 20200317_Timea20200319.xlsx"),
                         sheet = "RAW (4)")
 
-cevadata.CT <- read.xlsx(paste0(data.dir, "DataNDVtrial_manual_Egil 20200317_Timea20200319.xlsx"),
-                        sheet = "RAW (4)")
+
 
 cevadata <- cevadata.Manual
 
@@ -161,11 +160,6 @@ survivalplot <- ggplot(data = data.one.SIR[[1]]) +
 
 ```
 
-```{r include = F}
-data.one.SIR.selection <- reform.SIR.data(data = cevadata,
-                                sampleday.vars= paste0(c(1:14),".dpch"),
-                                exclude.seeder = T )
-```
 
 ## Area Under the Curve
 ```{r include = F}
@@ -243,13 +237,14 @@ hist.one.chal
 # \(T_{inf}\) at least one (CLO or ON) positive sample
 ```{r include = F}
 out.indiv.one.SIR$Vaccinated<-factor(out.indiv.one.SIR$Vaccinated, levels = c("Yes","No"))
+cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 hist.one.chal.v2 <- ggplot(data = out.indiv.one.SIR) +
   geom_histogram(aes(x = infper, y = ..density.. , fill = Vaccinated), colour = "black",
                  position = "dodge",binwidth = 1, na.rm = T)+
-  scale_fill_manual(values=c("Yes" = "white","No" = "grey"))+
+  scale_fill_manual(values=c("Yes" = cbPalette[2],"No" = cbPalette[3]))+
   scale_x_continuous(breaks = c(0:10))+
   ggtitle("Distribution of infectious period")+
-  ylab("Fraction")+
+  ylab("Proportion of infected birds")+
   xlab("Infectious period (days)") +
   #theme(panel.background = NULL,  legend.position = "none")+
   theme_bw()+
@@ -258,7 +253,7 @@ hist.one.chal.v2 <- ggplot(data = out.indiv.one.SIR) +
        # Vaccinated = c("No" = "Unvaccinated", "Yes" = "Vaccinated"),
         Challenge = c("contact" = "Contact", "seeder" = "Seeder")
     )) 
-ggsave("InfectiousPeriodCEVAv2.tiff",hist.one.chal.v2)
+ggsave("InfectiousPeriodCEVAv2.tiff",hist.one.chal.v2, dpi =720)
 ```
 ```{r}
 hist.one.chal.v2
@@ -280,7 +275,7 @@ anova(fit.one.SIR.inf.fixed.no.int,fit.one.SIR.inf.fixed)
 <!-- ## Statistical analyses ~ fixed vs random effects model -->
 ```{r include = F}
 
-#Compare mixed-model to fixed effects model
+#variable selection
 drop1(fit.one.SIR.inf.fixed.no.int, test = "F", ~.+Vaccinated + Challenge )
 
 ```
@@ -463,36 +458,45 @@ names(ct.data)
 ct.data$AUC <- as.numeric(sapply(c(1:length(ct.data$Group)), function(j){sum(36-as.numeric(ct.data[j,6:19]), na.rm = T)}) )
 
 ctauc <- aggregate(formula = AUC ~ Vaccinated+ci+Sample,
-          data = ct.data,
+          data = ct.data[ct.data$AUC>0,],
           FUN = "mean")
 ctauc$sd<-aggregate(formula = AUC ~ Vaccinated+ci+Sample,
-          data = ct.data,
+          data = ct.data[ct.data$AUC>0,],
           FUN = "sd")$AUC
 ctauc$n<-aggregate(formula = AUC ~ Vaccinated+ci+Sample,
-          data = ct.data,
+          data = ct.data[ct.data$AUC>0,],
           FUN = "length")$AUC
 #combine all categories
 ct.data$category <- paste0(ct.data$Vaccinated,".",ct.data$ci)
+
+
 #overall test
-kruskal.test(formula = AUC ~ category,data = ct.data[ct.data$Sample == "ON swab",])
-kruskal.test(formula = AUC ~ category,data = ct.data[ct.data$Sample == "CLO swab",])
-#test seed - contact per treatment
-wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == "ON swab"&ct.data$Vaccinated =="Yes",])
-wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == "ON swab"&ct.data$Vaccinated =="No",])
+kruskal.test(formula = AUC ~ category,data = ct.data[ct.data$Sample == "ON swab"&ct.data$AUC>0,])
+kruskal.test(formula = AUC ~ category,data = ct.data[ct.data$Sample == "CLO swab"&ct.data$AUC>0,])
+
+#test seed - contact per treatment ON in vaccinated
+wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == "ON swab"&ct.data$Vaccinated =="Yes",], paired = F)
+#test seed - contact per treatment CLO in vaccinated
+wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == "CLO swab"&ct.data$Vaccinated =="Yes",], paired = F)
+
+#test  seed=contact ON in unvaccinated 
+wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == "ON swab"&ct.data$Vaccinated =="No",], paired = F)
+#test  seed=contact CLO in unvaccinated 
+wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == "CLO swab"&ct.data$Vaccinated =="No",], paired = F)
+
 #test vaccinated versus unvaccinated stratified by seeder-contact
 wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == "ON swab"&ct.data$ci =="seeder",])
 wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == "ON swab"&ct.data$ci =="contact",])
 
-#test seed - contact per treatment
-wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == "CLO swab"&ct.data$Vaccinated =="Yes",])
-wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == "CLO swab"&ct.data$Vaccinated =="No",])
+
+
 #test vaccinated versus unvaccinated stratified by seeder-contact
 wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == "CLO swab"&ct.data$ci =="seeder",])
 wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == "CLO swab"&ct.data$ci =="contact",])
 
-
-
-
+#test vaccinated vs unvaccinated overall
+wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == "CLO swab",])
+wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == "ON swab",])
 
 
 # melt.ct.data<- reshape2::melt( ct.data[,c(2,5:19,21)],id.vars = c("Vaccinated",
@@ -504,6 +508,7 @@ wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == "CLO swa
 # 
 # drop1(lm(valueP ~ ci + Sample + Vaccinated, data= melt.ct.data))
 ```
+
 ```{r}
 signif(summary(lm(valueP ~ ci + Sample + Vaccinated, data= melt.ct.data))$coefficients,2)
 summary(lm(valueP ~ ci, data= melt.ct.data[melt.ct.data$Vaccinated=="Yes"& melt.ct.data$Sample=="ON swab",]))
@@ -529,9 +534,6 @@ cevadata.Manual <- read.xlsx(paste0(data.dir, "DataNDVtrial_manual_Egil 20200317
 cevadata <- cevadata.Manual
 
 
-data.one.SIR.selection <- reform.SIR.data(data = cevadata,
-                                sampleday.vars= paste0(c(1:14),".dpch"),
-                                exclude.seeder = T )
 
 #get data to calculate infectious period
 out.indiv.one.SIR<- data.one.SIR[[2]];
