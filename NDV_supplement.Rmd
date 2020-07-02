@@ -315,6 +315,8 @@ cevadata <- read.xlsx(paste0(data.dir, "DataNDVtrial_manual_Egil 20200317_Timea2
 data.one.SIR <- reform.SIR.data(data = cevadata,
                                 sampleday.vars= paste0(c(1:14),".dpch"),
                                 exclude.seeder = T )
+data.one.SIR$Vaccinated <- factor(data.one.SIR$Vaccinated, levels = c("Yes","No"))
+data.one.SIR$Vaccinated<-relevel(data.one.SIR$Vaccinated, ref = "No")
 
 ```
 
@@ -386,21 +388,98 @@ Vaccination should be included in the model as well as challenge.
 
 # Parameteric survival analyses 
 ```{r include =T}
+#add censoring as variable to the data set
 out.indiv.one.SIR$cens <- 1-as.numeric(out.indiv.one.SIR$`14.dpch` == 1)
 out.indiv.one.SIR$cens[is.na(out.indiv.one.SIR$cens)] <- 1
-surv.fit.one.SIR.exponential <- survival::survreg(survival::Surv(infper,cens)~ Vaccinated, dist = "exponential",data = out.indiv.one.SIR[out.indiv.one.SIR$Challenge == "contact",], na.action = na.omit)
-surv.fit.one.SIR.gaussian <- survival::survreg(survival::Surv(infper,cens)~ Vaccinated , dist = "gaussian",data = out.indiv.one.SIR[out.indiv.one.SIR$Challenge == "contact",], na.action = na.omit)
 
-surv.fit.one.SIR.gaussian.sc <- survival::survreg(survival::Surv(infper,cens)~ Vaccinated+Challenge, dist = "gaussian",data = out.indiv.one.SIR, na.action = na.omit)
+#Survival analyses on contact birds
+#perform exponential survival analysis
+surv.fit.one.SIR.exponential <- survival::survreg(survival::Surv(infper,cens)~ Vaccinated, dist = "exponential",data = out.indiv.one.SIR[out.indiv.one.SIR$Challenge == "contact",], na.action = na.omit)
+#perform gaussian survival analysis 
+surv.fit.one.SIR.gaussian <- survival::survreg(survival::Surv(infper,cens)~ Vaccinated , dist = "gaussian",data = out.indiv.one.SIR[out.indiv.one.SIR$Challenge == "contact",], na.action = na.omit)
+AIC(surv.fit.one.SIR.exponential)
+AIC(surv.fit.one.SIR.gaussian)
+```
+
+Based on AIC select gaussian model.
+
+```{r}
+#check if dropping vaccination changes the model
+drop1(surv.fit.one.SIR.gaussian,test = "Chisq")
+
+#print confidence intervals
+summary(surv.fit.one.SIR.gaussian)
+Tinfci<-confint(surv.fit.one.SIR.gaussian)
+summary(surv.fit.one.SIR.gaussian)$coefficients[1]
+Tinfci[1,]
+sum(summary(surv.fit.one.SIR.gaussian)$coefficients)
+Tinfci[2,]+summary(surv.fit.one.SIR.gaussian)$coefficients[1]
+#
+
+
+
+```
 
 drop1(surv.fit.one.SIR.gaussian,test = "Chisq")
 summary(surv.fit.one.SIR.gaussian.sc)
 
-pvalueInf <- summary(surv.fit.one.SIR.gaussian)
-pvalueInf<- pvalueInf$table["VaccinatedNo","p"]
-pvalueInf
-```
-CONTINUE!!! 
+#Calculate beta and R0
+
 ```{r}
-message("STOP"); 
+#pre select data without rows for S =0 or I = 0 or S = NA or C = NA
+out.nona.one.SIR <- data.one.SIR[[1]][(!is.na(data.one.SIR[[1]]$S)&!is.na(data.one.SIR[[1]]$C) &data.one.SIR[[1]]$I>0 &data.one.SIR[[1]]$S>0),]
+out.nona.one.SIR$Vaccinated <- factor(out.nona.one.SIR$Vaccinated, levels = c("No","Yes"))
+out.nona.one.SIR$Vaccinated <- relevel(out.nona.one.SIR$Vaccinated, ref = "No")
+#estimate beta 
+fit.SIR <- glm(cbind(C, S-C) ~ Vaccinated ,
+                offset = log(I/N),
+                family = binomial(link = "cloglog"), data = out.nona.one.SIR, 
+                na.action = na.omit)
+# #profile CI
+# fit.SIR.confint <- confint(fit.SIR)
+# summary(fit.SIR)
+# beta.ci <- confint(fit.SIR)
+# exp(fit.SIR$coefficients[1])
+# exp(beta.ci[1,])
+# exp(sum(fit.SIR$coefficients))
+# exp(beta.ci[2,])
+
+#calculate R0
+alpha = 0.05 #conf.level
+#beta
+mean.logbeta <- summary(fit.SIR)$coefficients[,1]
+confint.logbeta<-  confint(fit.SIR)
+
+#infectious period
+mean.inf.per <- summary(surv.fit.one.SIR.gaussian)$coefficients[1:2]
+confint.inf.per <- confint(surv.fit.one.SIR.gaussian)[1:2,]
+confint.inf.per[2,]<- confint.inf.per[1, ] +confint.inf.per[2, ]
+
+#log infectious period
+mean.log.inf.per <- log(cumsum(mean.inf.per))
+confint.log.inf.per <- log(confint.inf.per)
+
+#RNot rigth because of deifferent ordering.
+a lskf adsf;j
+mean.beta.inf.R <- data.frame(Vaccinated = c("No","Yes"),
+                      beta = round(exp(cumsum(mean.logbeta)),2),
+                      llbeta = round(exp(confint.logbeta[,1]+c(0,mean.logbeta[1])),2),
+                      ulbeta = round(exp(confint.logbeta[,2]+c(0,mean.logbeta[1])),2),
+                      infper = round(cumsum(mean.inf.per),2),
+                      llinfper = round(confint.inf.per[,1],2),
+                      ulinfper = round(confint.inf.per[,2],2),
+                      logR0 = round(cumsum(mean.logbeta)+mean.log.inf.per,2),
+                      lllogR0 = round(cumsum(mean.logbeta)  + confint.logbeta[,1] + log(confint.inf.per[,1]),2),
+                      ullogR0 = round(cumsum(mean.logbeta)  + confint.logbeta[,2] + log(confint.inf.per[,2]),2)
+)
+
+
+mean.beta.inf.R$R <- round(exp(mean.beta.inf.R$logR0),2)
+mean.beta.inf.R$llR <- round(exp(mean.beta.inf.R$lllogR0),2)
+mean.beta.inf.R$ulR <- round(exp(mean.beta.inf.R$ullogR0),2)
+rownames(mean.beta.inf.R)<- NULL
+mean.beta.inf.R[, c(1,2,3,4)]
+mean.beta.inf.R[, c(1,11,12,13)]
+
 ```
+

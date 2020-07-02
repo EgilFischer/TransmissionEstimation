@@ -318,9 +318,11 @@ fit.one.SIR.mm <- glmer(cbind(C, S-C) ~Vaccinated+
                   (1|Group),
                 offset = log(I/N),
                 family = binomial(link = "cloglog"), data = out.nona.one.SIR, na.action = na.omit)
+AIC(fit.one.SIR.mm)
 fit.one.SIR.fixed <- glm(cbind(C, S-C) ~ Vaccinated ,
                 offset = log(I/N),
                 family = binomial(link = "cloglog"), data = out.nona.one.SIR, na.action = na.omit)
+AIC(fit.one.SIR.fixed)
 
 ```
 <!-- ## Compare model fits -->
