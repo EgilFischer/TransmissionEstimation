@@ -322,7 +322,7 @@ data.one.SIR$Vaccinated<-relevel(data.one.SIR$Vaccinated, ref = "No")
 
 ## Infectious period
 
-#data selection
+# Data selection
 
 ```{r Tinf, echo=TRUE}
 #get data to calculate infectious period
@@ -333,9 +333,9 @@ out.indiv.one.SIR$infper <- apply(data.one.SIR[[2]][,c(5:18)]==1, 1, sum, na.rm 
 out.indiv.one.SIR[out.indiv.one.SIR$infper == 0,]$infper<- NA #zero means never been infected
 ```
 
-#plot
+# Plot
 
-```{r include = F}
+```{r include = T}
 #make factor
 out.indiv.one.SIR$Vaccinated<-factor(out.indiv.one.SIR$Vaccinated, levels = c("Yes","No"))
 
@@ -354,39 +354,15 @@ hist.one.chal <- ggplot(data = out.indiv.one.SIR) +
        # Vaccinated = c("No" = "Unvaccinated", "Yes" = "Vaccinated"),
         Challenge = c("contact" = "Contact", "seeder" = "Seeder")
     )) 
-#ggsave("InfectiousPeriodCEVA.tiff",hist.one.chal, dpi =720)
+#ggsave("InfectiousPeriod.tiff",hist.one.chal, dpi =720)
 
 hist.one.chal
 ```
 
-#estimate infectious period
+# Estimate infectious period
 
 The infectious period \(T_{inf}\): Parametric survival analyses assuming Normal distribution.
 
-```{r}
-#mixed effects model with group as random slope
-fit.one.SIR.inf.mm<-lmer(infper ~ Vaccinated + Challenge + Challenge*Vaccinated+ (1|Group),data = out.indiv.one.SIR)
-
-#fixed effects model 
-fit.one.SIR.inf.fixed<-lm(infper ~ Vaccinated + Challenge + Challenge*Vaccinated,data = out.indiv.one.SIR)
-#fixed effects model without interaction tem
-fit.one.SIR.inf.fixed.no.int <- lm(infper ~ Vaccinated + Challenge ,data = out.indiv.one.SIR)
-
-#Compare mixed-model to fixed effects model
-anova(fit.one.SIR.inf.mm,fit.one.SIR.inf.fixed)
-anova(fit.one.SIR.inf.fixed.no.int,fit.one.SIR.inf.fixed)
-```
-Conclusion a fixed effect model without interaction term can be used to estimate the infectious period.
-
-```{r include = F}
-
-#variable selection
-drop1(fit.one.SIR.inf.fixed.no.int, test = "F", ~.+Vaccinated + Challenge )
-
-```
-Vaccination should be included in the model as well as challenge.
-
-# Parameteric survival analyses 
 ```{r include =T}
 #add censoring as variable to the data set
 out.indiv.one.SIR$cens <- 1-as.numeric(out.indiv.one.SIR$`14.dpch` == 1)
@@ -394,9 +370,9 @@ out.indiv.one.SIR$cens[is.na(out.indiv.one.SIR$cens)] <- 1
 
 #Survival analyses on contact birds
 #perform exponential survival analysis
-surv.fit.one.SIR.exponential <- survival::survreg(survival::Surv(infper,cens)~ Vaccinated, dist = "exponential",data = out.indiv.one.SIR[out.indiv.one.SIR$Challenge == "contact",], na.action = na.omit)
+surv.fit.one.SIR.exponential <- survival::survreg(survival::Surv(infper,cens)~ relevel(Vaccinated, ref= "No"), dist = "exponential",data = out.indiv.one.SIR[out.indiv.one.SIR$Challenge == "contact",], na.action = na.omit)
 #perform gaussian survival analysis 
-surv.fit.one.SIR.gaussian <- survival::survreg(survival::Surv(infper,cens)~ Vaccinated , dist = "gaussian",data = out.indiv.one.SIR[out.indiv.one.SIR$Challenge == "contact",], na.action = na.omit)
+surv.fit.one.SIR.gaussian <- survival::survreg(survival::Surv(infper,cens)~ relevel(Vaccinated, ref= "No") , dist = "gaussian",data = out.indiv.one.SIR[out.indiv.one.SIR$Challenge == "contact",], na.action = na.omit)
 AIC(surv.fit.one.SIR.exponential)
 AIC(surv.fit.one.SIR.gaussian)
 ```
@@ -410,20 +386,13 @@ drop1(surv.fit.one.SIR.gaussian,test = "Chisq")
 #print confidence intervals
 summary(surv.fit.one.SIR.gaussian)
 Tinfci<-confint(surv.fit.one.SIR.gaussian)
-summary(surv.fit.one.SIR.gaussian)$coefficients[1]
-Tinfci[1,]
-sum(summary(surv.fit.one.SIR.gaussian)$coefficients)
-Tinfci[2,]+summary(surv.fit.one.SIR.gaussian)$coefficients[1]
-#
-
-
 
 ```
 
 drop1(surv.fit.one.SIR.gaussian,test = "Chisq")
 summary(surv.fit.one.SIR.gaussian.sc)
 
-#Calculate beta and R0
+# Calculate beta and R0
 
 ```{r}
 #pre select data without rows for S =0 or I = 0 or S = NA or C = NA
@@ -431,55 +400,56 @@ out.nona.one.SIR <- data.one.SIR[[1]][(!is.na(data.one.SIR[[1]]$S)&!is.na(data.o
 out.nona.one.SIR$Vaccinated <- factor(out.nona.one.SIR$Vaccinated, levels = c("No","Yes"))
 out.nona.one.SIR$Vaccinated <- relevel(out.nona.one.SIR$Vaccinated, ref = "No")
 #estimate beta 
-fit.SIR <- glm(cbind(C, S-C) ~ Vaccinated ,
+fit.SIR <- glm(cbind(C, S-C) ~ relevel(Vaccinated,ref = "No") ,
                 offset = log(I/N),
                 family = binomial(link = "cloglog"), data = out.nona.one.SIR, 
                 na.action = na.omit)
-# #profile CI
-# fit.SIR.confint <- confint(fit.SIR)
-# summary(fit.SIR)
-# beta.ci <- confint(fit.SIR)
-# exp(fit.SIR$coefficients[1])
-# exp(beta.ci[1,])
-# exp(sum(fit.SIR$coefficients))
-# exp(beta.ci[2,])
 
 #calculate R0
 alpha = 0.05 #conf.level
 #beta
-mean.logbeta <- summary(fit.SIR)$coefficients[,1]
-confint.logbeta<-  confint(fit.SIR)
+mean.logbeta <- cumsum(summary(fit.SIR)$coefficients[,1])
+var.logbeta <- summary(fit.SIR)$coefficients[,2]^2
+confint.logbeta<-  confint(fit.SIR)+c(0,mean.logbeta[1])
 
 #infectious period
-mean.inf.per <- summary(surv.fit.one.SIR.gaussian)$coefficients[1:2]
-confint.inf.per <- confint(surv.fit.one.SIR.gaussian)[1:2,]
-confint.inf.per[2,]<- confint.inf.per[1, ] +confint.inf.per[2, ]
+mean.inf.per <- cumsum(summary(surv.fit.one.SIR.gaussian)$coefficients[1:2])
+confint.inf.per <- confint(surv.fit.one.SIR.gaussian)[1:2,]+c(0, mean.inf.per[1])
+#get the variance from the profile likelihood
+var.inf.per <- ((confint.inf.per-mean.inf.per)[,2]/qnorm(0.05/2))^2
+#calculate log of the mean and the variance of the log of the mean. 
+mean.log.inf.per <- log(mean.inf.per)
+var.log.inf.per <- log(1+var.inf.per/(mean.inf.per)^2)
 
-#log infectious period
-mean.log.inf.per <- log(cumsum(mean.inf.per))
-confint.log.inf.per <- log(confint.inf.per)
+#calculate R
+mean.logR <- mean.logbeta + mean.log.inf.per
+var.logR <- var.logbeta + var.log.inf.per
+cll.logR <- mean.logR - qnorm(1-0.05/2) * sqrt(var.logR)
+cul.logR <- mean.logR + qnorm(1-0.05/2) * sqrt(var.logR)
 
-#RNot rigth because of deifferent ordering.
-a lskf adsf;j
-mean.beta.inf.R <- data.frame(Vaccinated = c("No","Yes"),
-                      beta = round(exp(cumsum(mean.logbeta)),2),
-                      llbeta = round(exp(confint.logbeta[,1]+c(0,mean.logbeta[1])),2),
-                      ulbeta = round(exp(confint.logbeta[,2]+c(0,mean.logbeta[1])),2),
-                      infper = round(cumsum(mean.inf.per),2),
-                      llinfper = round(confint.inf.per[,1],2),
-                      ulinfper = round(confint.inf.per[,2],2),
-                      logR0 = round(cumsum(mean.logbeta)+mean.log.inf.per,2),
-                      lllogR0 = round(cumsum(mean.logbeta)  + confint.logbeta[,1] + log(confint.inf.per[,1]),2),
-                      ullogR0 = round(cumsum(mean.logbeta)  + confint.logbeta[,2] + log(confint.inf.per[,2]),2)
-)
+#put an a table
+data.table <- data.frame(Tinf = round(mean.inf.per,2),
+          Tinfll = round(confint.inf.per[,1],2),
+          Tinful = round(confint.inf.per[,2],2),
+          beta = round(exp(mean.logbeta),2),
+          betall = round(exp(confint.logbeta)[,1],2),
+          betaul =round(exp(confint.logbeta)[,2],2),
+          R0 = round(exp(mean.logR),2),
+          R0ll = round(exp (cll.logR),2),
+          R0ul = round(exp(cul.logR),2))
+row.names(data.table)<- c("Unvaccinated","Vaccinated")
+out.table <- knitr::kable(x = data.table,
+             digits =2,
+             format = "html",
+             #row.names = c("Unvaccinated","Vaccinated")),
+             col.names =c("Estimate","2.5%","97.5%",
+                          "Estimate","2.5%","97.5%",
+                          "Estimate","2.5%","97.5%"))
+kableExtra::add_header_above(out.table,c("Treatment" =1,
+                 "Tinf" = 3,
+                 "beta" = 3,
+                 "R0" = 3))
 
-
-mean.beta.inf.R$R <- round(exp(mean.beta.inf.R$logR0),2)
-mean.beta.inf.R$llR <- round(exp(mean.beta.inf.R$lllogR0),2)
-mean.beta.inf.R$ulR <- round(exp(mean.beta.inf.R$ullogR0),2)
-rownames(mean.beta.inf.R)<- NULL
-mean.beta.inf.R[, c(1,2,3,4)]
-mean.beta.inf.R[, c(1,11,12,13)]
 
 ```
 

@@ -287,9 +287,12 @@ out.indiv.one.SIR$cens <- 1-as.numeric(out.indiv.one.SIR$`14.dpch` == 1)
 out.indiv.one.SIR$cens[is.na(out.indiv.one.SIR$cens)] <- 1
 surv.fit.one.SIR.exponential <- survival::survreg(survival::Surv(infper,cens)~ Vaccinated, dist = "exponential",data = out.indiv.one.SIR[out.indiv.one.SIR$Challenge == "contact",], na.action = na.omit)
 surv.fit.one.SIR.gaussian <- survival::survreg(survival::Surv(infper,cens)~ Vaccinated , dist = "gaussian",data = out.indiv.one.SIR[out.indiv.one.SIR$Challenge == "contact",], na.action = na.omit)
-
+cumsum(surv.fit.one.SIR.gaussian$coefficients)
+AIC(surv.fit.one.SIR.gaussian)
 surv.fit.one.SIR.gaussian.sc <- survival::survreg(survival::Surv(infper,cens)~ Vaccinated+Challenge, dist = "gaussian",data = out.indiv.one.SIR, na.action = na.omit)
-
+AIC(surv.fit.one.SIR.gaussian)
+surv.fit.one.SIR.lognormal <- survival::survreg(survival::Surv(infper,cens)~ Vaccinated, dist = "lognormal",data = out.indiv.one.SIR, na.action = na.omit)
+AIC(surv.fit.one.SIR.lognormal)
 drop1(surv.fit.one.SIR.gaussian.sc)
 anova(surv.fit.one.SIR.gaussian,surv.fit.one.SIR.exponential, test ="Chisq")
 drop1(surv.fit.one.SIR.gaussian,test = "Chisq")
