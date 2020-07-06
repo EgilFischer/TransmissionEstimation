@@ -344,8 +344,8 @@ hist.one.chal <- ggplot(data = out.indiv.one.SIR) +
                  position = "dodge",binwidth = 1, na.rm = T)+
   scale_fill_manual(values=c("Yes" = cbPalette[2],"No" = cbPalette[3]))+
   scale_x_continuous(breaks = c(0:10))+
-  ggtitle("Distribution of infectious period")+
-  ylab("Proportion of infected birds")+
+ # ggtitle("Distribution of infectious period")+
+  ylab("Proportion of excreting chickens")+
   xlab("Infectious period (days)") +
   #theme(panel.background = NULL,  legend.position = "none")+
   theme_bw()+
@@ -354,7 +354,7 @@ hist.one.chal <- ggplot(data = out.indiv.one.SIR) +
        # Vaccinated = c("No" = "Unvaccinated", "Yes" = "Vaccinated"),
         Challenge = c("contact" = "Contact", "seeder" = "Seeder")
     )) 
-#ggsave("InfectiousPeriod.tiff",hist.one.chal, dpi =720)
+ggsave("InfectiousPeriod.tiff",hist.one.chal, dpi =720)
 
 hist.one.chal
 ```
@@ -367,7 +367,7 @@ The infectious period \(T_{inf}\): Parametric survival analyses assuming Normal 
 #add censoring as variable to the data set
 out.indiv.one.SIR$cens <- 1-as.numeric(out.indiv.one.SIR$`14.dpch` == 1)
 out.indiv.one.SIR$cens[is.na(out.indiv.one.SIR$cens)] <- 1
-
+out.indiv.one.SIR[out.indiv.one.SIR$cens==0,]
 #Survival analyses on contact birds
 #perform exponential survival analysis
 surv.fit.one.SIR.exponential <- survival::survreg(survival::Surv(infper,cens)~ relevel(Vaccinated, ref= "No"), dist = "exponential",data = out.indiv.one.SIR[out.indiv.one.SIR$Challenge == "contact",], na.action = na.omit)
