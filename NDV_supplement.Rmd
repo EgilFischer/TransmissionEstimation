@@ -1,7 +1,7 @@
 ---
-title: "NDV_supplement"
-author: "Egil Fischer"
-date: "2-7-2020"
+title: "NDV_supplement with `A vector vaccine reduces transmission of Newcastle disease virus in commercial broiler chickens with maternally derived antibodies' "
+author: "T. Tatar-Kis, E.A.J. Fischer, C. Cazaban, E. Kovacs, Z. G. Homonnay, V. Palya and J.A.(Arjan) Stegeman"
+date: "10-7-2020"
 output: html_document
 ---
 
@@ -36,26 +36,102 @@ source("NDV_datamodel.R")
 ## Load and transform data
 
 ```{r loaddata}
-#set directory with data
-data.dir <- "C:/Surfdrive/Projecten/CEVA/"
+#set directory with data equal to the working directory
+data.dir <- getwd()
 #read the data of the vaccination group
 
 #data original CT values
-cevadata.original <- read.xlsx(paste0(data.dir, "DataNDVtrial_manual_Egil 20200317_Timea20200319.xlsx"),
-                        sheet = "RAW (4)")
+ndvdata <- read.xlsx("Appendix_individualsCtvaluesandevaluation.xlsx", 
+                 startRow =2,
+                 colNames = T)
 
+#cevadata.original <- read.xlsx(paste0(data.dir, "Appendix-individuals Ct values and evaluation.xlsx"),
+ #                       sheet = "RAW (4)")
+ndvdata<-fill.type.na.rename(ndvdata)
 #data used for transmission 
-cevadata <- read.xlsx(paste0(data.dir, "DataNDVtrial_manual_Egil 20200317_Timea20200319.xlsx"),
-                        sheet = "Input_seedernotchanged")
+#cevadata <- read.xlsx(paste0(data.dir, "DataNDVtrial_manual_Egil 20200317_Timea20200319.xlsx"),
+ #                       sheet = "Input_seedernotchanged")
 
 #transform to usable data
-data.one.SIR <- reform.SIR.data(data = cevadata,
+data.one.SIR <- reform.SIR.data(data = ndvdata,
                                 sampleday.vars= paste0(c(1:14),".dpch"),
                                 exclude.seeder = T )
 data.one.SIR$Vaccinated <- factor(data.one.SIR$Vaccinated, levels = c("Yes","No"))
 data.one.SIR$Vaccinated<-relevel(data.one.SIR$Vaccinated, ref = "No")
 
 ```
+
+## Excretion
+
+For those that were defined positive
+
+```{r include = F}
+ct.data <- ndvdata
+for(day in c(6:19)){
+  
+  ct.data[(!data.one.SIR[[2]][,day]==1)|is.na(data.one.SIR[[2]][,day]),day]<- NA
+  
+}
+
+suppressWarnings(
+ ct.data$AUC <- sapply(c(1:length(ct.data$Group)), function(j){sum(36-as.numeric(ct.data[j,6:19]), na.rm = T)}) )#do not bother about NA's
+
+#selection only the ct values >0
+ct.data<- ct.data[ct.data$AUC>0,]
+ 
+ctauc <- aggregate(formula = AUC ~ Vaccinated+ci+Sample,
+          data = ct.data[ct.data$AUC>0,],
+          FUN = "mean", rm.na = T)
+ctauc$sd<-aggregate(formula = AUC ~ Vaccinated+ci+Sample,
+          data = ct.data[ct.data$AUC>0,],
+          FUN = "sd")$AUC
+ctauc$n<-aggregate(formula = AUC ~ Vaccinated+ci+Sample,
+          data = ct.data[ct.data$AUC>0,],
+          FUN = "length")$AUC
+#combine all categories
+ct.data$category <- paste0(ct.data$Vaccinated,".",ct.data$ci)
+
+#overall test
+kruskal.test(formula = AUC ~ category,data = ct.data[ct.data$Sample == "ON swab",])
+kruskal.test(formula = AUC ~ category,data = ct.data[ct.data$Sample == "CLO swab",])
+
+#cloacal swabs contact versus seeders
+wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == "CLO swab",], paired = F)
+
+#oro-nasal swabs contact versus seeders
+wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == "ON swab",], paired = F)
+
+ 
+#test seed - contact per treatment CLO in vaccinated
+ wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == "CLO swab"&ct.data$Vaccinated =="Yes",], paired = F)
+ 
+ #test seed - contact per treatment ON in vaccinated
+ wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == "ON swab"&ct.data$Vaccinated =="Yes",], paired = F)
+
+#test  seed=contact CLO in unvaccinated
+wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == "CLO swab"&ct.data$Vaccinated =="No",], paired = F)
+ 
+#test  seed=contact ON in unvaccinated
+wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == "ON swab"&ct.data$Vaccinated =="No",], paired = F)
+
+
+#test vaccinated versus unvaccinated stratified by seeder-contact
+wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == "CLO swab"&ct.data$ci =="seeder",])
+wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == "CLO swab"&ct.data$ci =="contact",])
+
+ 
+#test vaccinated versus unvaccinated stratified by seeder-contact
+wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == "ON swab"&ct.data$ci =="seeder",])
+wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == "ON swab"&ct.data$ci =="contact",])
+
+
+#test vaccinated vs unvaccinated overall
+wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == "CLO swab",])
+wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == "ON swab",])
+
+
+```
+
 
 ## Infectious period
 
@@ -187,6 +263,27 @@ kableExtra::add_header_above(out.table,c("Treatment" =1,
                  "beta" = 3,
                  "R0" = 3))
 
+```
+Probability of a major outbreak is 0 for $R_0<= 1$ and $1-1/R_0 $ otherwise. 
+
+```{r}
+#probability major outbreak
+(1-1/data.table$R0 ) #negative means 0
+(1-1/data.table$R0ll ) #negative means 0
+(1-1/data.table$R0ul ) #negative means 0
 
 ```
+The final size can still be calculated as the absolute number of infections by one initiall infected $\dfrac{1}{1-R_0}$ or the fraction of the population $z$ eventually infected $-\ln(1-z) = z R_0$ :
+```{r}
+#final size of the outbreak
+final.size<- function(R0){if(R0<1){return(1/(1-R0))}else{
+ return(uniroot(function(z){-R0*z-log(1-z)},lower = .1, upper =1)$root)
+  }
+}
 
+sapply(data.table$R0,final.size) #first is fraction, second is number
+sapply(data.table$R0ll,final.size) #first is fraction, second is number
+sapply(data.table$R0ul,final.size) #both fractions
+
+
+```

@@ -4,6 +4,25 @@
 #       that can be used for parameters estimation                 #
 ####################################################################
 
+#fill in groups and types of birds when NA
+fill.type.na.rename <- function(data){
+  new.data <- data;
+  records <- length(data[,1]);
+  for(i in c(1:records))
+  {
+      types <- c(ifelse(!is.na(new.data[i,]$Group),new.data[i,]$Group, types[1]),#set group
+                 ifelse(!is.na(new.data[i,]$Subgroup),new.data[i,]$Subgroup, types[2]),#set group
+                 ifelse(!is.na(new.data[i,]$Role.in.the.study),new.data[i,]$Role.in.the.study, types[3]),#set group
+                 ifelse(!is.na(new.data[i,]$bird.id),new.data[i,]$bird.id, types[4]))#set group
+      new.data[i,c(1:4)]<- types
+        
+  }
+  colnames(new.data)[c(1:3,5)]<- c("Vaccinated", "Group","ci","Sample")
+  new.data$Vaccinated <- ifelse(new.data$Vaccinated =="Vaccinated", "Yes", "No")
+  new.data$Challenge <- ifelse(new.data$ci =="seeder", "seeder", "contact")
+  return(new.data[!is.na(data$Sample.type),])#remove empty records
+}
+
 #uses file with states(positive / negative) already determined manually from Ct value
 reform.SIR.data <- function(data, 
                             sampleday.vars,
@@ -25,10 +44,13 @@ reform.data<- function(data,
                        positive.if = c("max","min")[1],#max will use at least 1 positive sample, min all samples positive.
                        cut.off = 0,
                        exclude.seeder = T,
-                       SIR.state = F#False measn that SIR status needs to be determined
+                       SIR.state = F#False means that SIR status needs to be determined
 )
 {
-  
+  #remove manual classification which was added for the publication
+  data <-data[(data$Sample=="category"&!is.na(data$Sample)),];
+  data[,sampleday.vars]<- sapply(data[,sampleday.vars], function(x){ifelse(x=="S",0,ifelse(x=="I", 1,ifelse(x =="R",2,NA)))});
+  #
   if(!SIR.state){
     #start with a recoding data to binary yes/no
     binary.data <- data; binary.data[, sampleday.vars] <- lapply(binary.data[, sampleday.vars], 
@@ -61,6 +83,7 @@ reform.data<- function(data,
   id<-NULL; inf <- NULL; rec<- NULL;n <- NULL; cases <- NULL;susceptibles <- NULL;
   for(day in c(1:length(sampleday.vars)))
   {
+    
     #determine the number of infectious at this day
     inf <- rbind(inf, data.frame(dpch = sampleday.vars[day],
                                  ndpch = day,
@@ -261,5 +284,4 @@ SIR.state<- function(in.data,#vector of consecutive samples
   
   return(out.data)
 }
-
 
