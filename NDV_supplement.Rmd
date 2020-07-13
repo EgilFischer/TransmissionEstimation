@@ -65,7 +65,7 @@ data.one.SIR$Vaccinated<-relevel(data.one.SIR$Vaccinated, ref = "No")
 
 For those that were defined positive
 
-```{r include = F}
+```{r include = T}
 ct.data <- ndvdata
 for(day in c(6:19)){
   
@@ -91,38 +91,47 @@ ctauc$n<-aggregate(formula = AUC ~ Vaccinated+ci+Sample,
 #combine all categories
 ct.data$category <- paste0(ct.data$Vaccinated,".",ct.data$ci)
 
-#overall test
+#overall test for AUC against either one of the categories (categories is combination type bird and vaccination status)
 kruskal.test(formula = AUC ~ category,data = ct.data[ct.data$Sample == "ON swab",])
 kruskal.test(formula = AUC ~ category,data = ct.data[ct.data$Sample == "CLO swab",])
+```
 
+Compare challenge type (seeder or contact) stratisfied by type of swab.
+
+```{r}
 #cloacal swabs contact versus seeders
 wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == "CLO swab",], paired = F)
 
 #oro-nasal swabs contact versus seeders
 wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == "ON swab",], paired = F)
+```
+Compare challenge type (seeder or contact) stratisfied by type of swab in unvaccinated birds.
 
- 
-#test seed - contact per treatment CLO in vaccinated
- wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == "CLO swab"&ct.data$Vaccinated =="Yes",], paired = F)
- 
- #test seed - contact per treatment ON in vaccinated
- wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == "ON swab"&ct.data$Vaccinated =="Yes",], paired = F)
-
+```{r}
 #test  seed=contact CLO in unvaccinated
 wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == "CLO swab"&ct.data$Vaccinated =="No",], paired = F)
  
 #test  seed=contact ON in unvaccinated
 wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == "ON swab"&ct.data$Vaccinated =="No",], paired = F)
+```
 
+Compare challenge type (seeder or contact) stratisfied by type of swab in vaccinated birds.
 
-#test vaccinated versus unvaccinated stratified by seeder-contact
-wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == "CLO swab"&ct.data$ci =="seeder",])
-wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == "CLO swab"&ct.data$ci =="contact",])
+```{r} 
+#test seed - contact per treatment CLO in vaccinated
+ wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == "CLO swab"&ct.data$Vaccinated =="Yes",], paired = F)
+ ct.data[ct.data$Sample == "CLO swab"&ct.data$Vaccinated =="No"&ct.data$ci=="seeder",]$AUC
+ ct.data[ct.data$Sample == "CLO swab"&ct.data$Vaccinated =="No"&ct.data$ci=="contact",]$AUC
+ #test seed - contact per treatment ON in vaccinated
+ wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == "ON swab"&ct.data$Vaccinated =="Yes",], paired = F)
+  ct.data[ct.data$Sample == "ON swab"&ct.data$Vaccinated =="No"&ct.data$ci=="seeder",]$AUC
+ ct.data[ct.data$Sample == "ON swab"&ct.data$Vaccinated =="No"&ct.data$ci=="contact",]$AUC
 
- 
-#test vaccinated versus unvaccinated stratified by seeder-contact
-wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == "ON swab"&ct.data$ci =="seeder",])
-wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == "ON swab"&ct.data$ci =="contact",])
+```
+
+Compare vaccinated to unvaccinated  stratisfied by type of swab.
+
+```{r}
 
 
 #test vaccinated vs unvaccinated overall
@@ -131,6 +140,26 @@ wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == "ON swab
 
 
 ```
+
+
+Compare vaccinated to unvaccinated  stratisfied by type of swab for contact birds .
+
+```{r}
+
+#test vaccinated versus unvaccinated for contact
+
+wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == "CLO swab"&ct.data$ci =="contact",])
+wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == "ON swab"&ct.data$ci =="contact",]) 
+
+#test vaccinated versus unvaccinated for seeder
+wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == "CLO swab"&ct.data$ci =="seeder",])
+
+wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == "ON swab"&ct.data$ci =="seeder",])
+
+
+```
+
+
 
 
 ## Infectious period
@@ -184,6 +213,7 @@ out.indiv.one.SIR[out.indiv.one.SIR$cens==0,]
 #Survival analyses on contact birds
 #perform exponential survival analysis
 surv.fit.one.SIR.exponential <- survival::survreg(survival::Surv(infper,cens)~ relevel(Vaccinated, ref= "No"), dist = "exponential",data = out.indiv.one.SIR[out.indiv.one.SIR$Challenge == "contact",], na.action = na.omit)
+
 #perform gaussian survival analysis 
 surv.fit.one.SIR.gaussian <- survival::survreg(survival::Surv(infper,cens)~ relevel(Vaccinated, ref= "No") , dist = "gaussian",data = out.indiv.one.SIR[out.indiv.one.SIR$Challenge == "contact",], na.action = na.omit)
 AIC(surv.fit.one.SIR.exponential)
@@ -264,10 +294,10 @@ kableExtra::add_header_above(out.table,c("Treatment" =1,
                  "R0" = 3))
 
 ```
-Probability of a major outbreak is 0 for $R_0<= 1$ and $1-1/R_0 $ otherwise. 
+Probability of a major outbreak is 0 for $R_0<= 1$ and $1-1/R_0 $ otherwise. This is an approximation, because the infectious period is normally distributed. 
 
 ```{r}
-#probability major outbreak
+#approximate probability major outbreak
 (1-1/data.table$R0 ) #negative means 0
 (1-1/data.table$R0ll ) #negative means 0
 (1-1/data.table$R0ul ) #negative means 0
@@ -275,12 +305,11 @@ Probability of a major outbreak is 0 for $R_0<= 1$ and $1-1/R_0 $ otherwise.
 ```
 The final size can still be calculated as the absolute number of infections by one initiall infected $\dfrac{1}{1-R_0}$ or the fraction of the population $z$ eventually infected $-\ln(1-z) = z R_0$ :
 ```{r}
-#final size of the outbreak
+#approximate final size of the outbreak
 final.size<- function(R0){if(R0<1){return(1/(1-R0))}else{
  return(uniroot(function(z){-R0*z-log(1-z)},lower = .1, upper =1)$root)
   }
 }
-
 sapply(data.table$R0,final.size) #first is fraction, second is number
 sapply(data.table$R0ll,final.size) #first is fraction, second is number
 sapply(data.table$R0ul,final.size) #both fractions
