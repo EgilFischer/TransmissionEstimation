@@ -428,6 +428,155 @@ data.one.SIR$Vaccinated&lt;-relevel(data.one.SIR$Vaccinated, ref = &quot;No&quot
 <div id="excretion" class="section level2">
 <h2>Excretion</h2>
 <p>For those that were defined positive</p>
+<pre class="r"><code>ct.data &lt;- ndvdata
+for(day in c(6:19)){
+  
+  ct.data[(!data.one.SIR[[2]][,day]==1)|is.na(data.one.SIR[[2]][,day]),day]&lt;- NA
+  
+}
+
+suppressWarnings(
+ ct.data$AUC &lt;- sapply(c(1:length(ct.data$Group)), function(j){sum(36-as.numeric(ct.data[j,6:19]), na.rm = T)}) )#do not bother about NA&#39;s
+
+#selection only the ct values &gt;0
+ct.data&lt;- ct.data[ct.data$AUC&gt;0,]
+ 
+ctauc &lt;- aggregate(formula = AUC ~ Vaccinated+ci+Sample,
+          data = ct.data[ct.data$AUC&gt;0,],
+          FUN = &quot;mean&quot;, rm.na = T)
+ctauc$sd&lt;-aggregate(formula = AUC ~ Vaccinated+ci+Sample,
+          data = ct.data[ct.data$AUC&gt;0,],
+          FUN = &quot;sd&quot;)$AUC
+ctauc$n&lt;-aggregate(formula = AUC ~ Vaccinated+ci+Sample,
+          data = ct.data[ct.data$AUC&gt;0,],
+          FUN = &quot;length&quot;)$AUC
+#combine all categories
+ct.data$category &lt;- paste0(ct.data$Vaccinated,&quot;.&quot;,ct.data$ci)
+
+#overall test for AUC against either one of the categories (categories is combination type bird and vaccination status)
+kruskal.test(formula = AUC ~ category,data = ct.data[ct.data$Sample == &quot;ON swab&quot;,])</code></pre>
+<pre><code>## 
+##  Kruskal-Wallis rank sum test
+## 
+## data:  AUC by category
+## Kruskal-Wallis chi-squared = 26.077, df = 3, p-value = 9.189e-06</code></pre>
+<pre class="r"><code>kruskal.test(formula = AUC ~ category,data = ct.data[ct.data$Sample == &quot;CLO swab&quot;,])</code></pre>
+<pre><code>## 
+##  Kruskal-Wallis rank sum test
+## 
+## data:  AUC by category
+## Kruskal-Wallis chi-squared = 22.131, df = 3, p-value = 6.127e-05</code></pre>
+<p>Compare challenge type (seeder or contact) stratisfied by type of swab.</p>
+<pre class="r"><code>#cloacal swabs contact versus seeders
+wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == &quot;CLO swab&quot;,], paired = F)</code></pre>
+<pre><code>## 
+##  Wilcoxon rank sum test
+## 
+## data:  AUC by Challenge
+## W = 36, p-value = 3.895e-05
+## alternative hypothesis: true location shift is not equal to 0</code></pre>
+<pre class="r"><code>#oro-nasal swabs contact versus seeders
+wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == &quot;ON swab&quot;,], paired = F)</code></pre>
+<pre><code>## 
+##  Wilcoxon rank sum test
+## 
+## data:  AUC by Challenge
+## W = 147, p-value = 0.01814
+## alternative hypothesis: true location shift is not equal to 0</code></pre>
+<p>Compare challenge type (seeder or contact) stratisfied by type of swab in unvaccinated birds.</p>
+<pre class="r"><code>#test  seed=contact CLO in unvaccinated
+wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == &quot;CLO swab&quot;&amp;ct.data$Vaccinated ==&quot;No&quot;,], paired = F)</code></pre>
+<pre><code>## 
+##  Wilcoxon rank sum test
+## 
+## data:  AUC by Challenge
+## W = 21, p-value = 0.0001785
+## alternative hypothesis: true location shift is not equal to 0</code></pre>
+<pre class="r"><code>#test  seed=contact ON in unvaccinated
+wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == &quot;ON swab&quot;&amp;ct.data$Vaccinated ==&quot;No&quot;,], paired = F)</code></pre>
+<pre><code>## 
+##  Wilcoxon rank sum test
+## 
+## data:  AUC by Challenge
+## W = 39, p-value = 0.006081
+## alternative hypothesis: true location shift is not equal to 0</code></pre>
+<p>Compare challenge type (seeder or contact) stratisfied by type of swab in vaccinated birds.</p>
+<pre class="r"><code>#test seed - contact per treatment CLO in vaccinated
+ wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == &quot;CLO swab&quot;&amp;ct.data$Vaccinated ==&quot;Yes&quot;,], paired = F)</code></pre>
+<pre><code>## 
+##  Wilcoxon rank sum test
+## 
+## data:  AUC by Challenge
+## W = 1, p-value = 0.1905
+## alternative hypothesis: true location shift is not equal to 0</code></pre>
+<pre class="r"><code> ct.data[ct.data$Sample == &quot;CLO swab&quot;&amp;ct.data$Vaccinated ==&quot;No&quot;&amp;ct.data$ci==&quot;seeder&quot;,]$AUC</code></pre>
+<pre><code>##  [1] 49.36 52.36 52.45 49.40 41.10 26.98 33.86 37.55 17.89 37.49 44.51 39.97
+## [13] 54.71 26.33 43.02</code></pre>
+<pre class="r"><code> ct.data[ct.data$Sample == &quot;CLO swab&quot;&amp;ct.data$Vaccinated ==&quot;No&quot;&amp;ct.data$ci==&quot;contact&quot;,]$AUC</code></pre>
+<pre><code>##  [1] 18.06 24.20 19.36  3.23 12.48 17.24  2.48 19.45 28.13 43.63  8.31 24.32
+## [13] 34.52</code></pre>
+<pre class="r"><code> #test seed - contact per treatment ON in vaccinated
+ wilcox.test(formula = AUC ~ Challenge,data = ct.data[ct.data$Sample == &quot;ON swab&quot;&amp;ct.data$Vaccinated ==&quot;Yes&quot;,], paired = F)</code></pre>
+<pre><code>## 
+##  Wilcoxon rank sum test
+## 
+## data:  AUC by Challenge
+## W = 9, p-value = 0.009667
+## alternative hypothesis: true location shift is not equal to 0</code></pre>
+<pre class="r"><code>  ct.data[ct.data$Sample == &quot;ON swab&quot;&amp;ct.data$Vaccinated ==&quot;No&quot;&amp;ct.data$ci==&quot;seeder&quot;,]$AUC</code></pre>
+<pre><code>##  [1] 54.49 57.83 57.13 55.31 63.68 40.68 17.92 50.90 30.07 13.18 45.42 66.35
+## [13] 32.33 52.23 41.89</code></pre>
+<pre class="r"><code> ct.data[ct.data$Sample == &quot;ON swab&quot;&amp;ct.data$Vaccinated ==&quot;No&quot;&amp;ct.data$ci==&quot;contact&quot;,]$AUC</code></pre>
+<pre><code>##  [1] 28.91 13.77 11.01  5.13 46.40 19.85  0.33 30.98 49.20 42.20 30.17 37.97
+## [13] 35.33</code></pre>
+<p>Compare vaccinated to unvaccinated stratisfied by type of swab.</p>
+<pre class="r"><code>#test vaccinated vs unvaccinated overall
+wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == &quot;CLO swab&quot;,])</code></pre>
+<pre><code>## 
+##  Wilcoxon rank sum test
+## 
+## data:  AUC by Vaccinated
+## W = 180, p-value = 0.0002165
+## alternative hypothesis: true location shift is not equal to 0</code></pre>
+<pre class="r"><code>wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == &quot;ON swab&quot;,])</code></pre>
+<pre><code>## 
+##  Wilcoxon rank sum test
+## 
+## data:  AUC by Vaccinated
+## W = 426, p-value = 1.934e-06
+## alternative hypothesis: true location shift is not equal to 0</code></pre>
+<p>Compare vaccinated to unvaccinated stratisfied by type of swab for contact birds .</p>
+<pre class="r"><code>#test vaccinated versus unvaccinated for contact
+
+wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == &quot;CLO swab&quot;&amp;ct.data$ci ==&quot;contact&quot;,])</code></pre>
+<pre><code>## 
+##  Wilcoxon rank sum test
+## 
+## data:  AUC by Vaccinated
+## W = 62, p-value = 0.001634
+## alternative hypothesis: true location shift is not equal to 0</code></pre>
+<pre class="r"><code>wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == &quot;ON swab&quot;&amp;ct.data$ci ==&quot;contact&quot;,]) </code></pre>
+<pre><code>## 
+##  Wilcoxon rank sum test
+## 
+## data:  AUC by Vaccinated
+## W = 82, p-value = 0.002425
+## alternative hypothesis: true location shift is not equal to 0</code></pre>
+<pre class="r"><code>#test vaccinated versus unvaccinated for seeder
+wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == &quot;CLO swab&quot;&amp;ct.data$ci ==&quot;seeder&quot;,])</code></pre>
+<pre><code>## 
+##  Wilcoxon rank sum test
+## 
+## data:  AUC by Vaccinated
+## W = 29, p-value = 0.02941
+## alternative hypothesis: true location shift is not equal to 0</code></pre>
+<pre class="r"><code>wilcox.test(formula = AUC ~ Vaccinated,data = ct.data[ct.data$Sample == &quot;ON swab&quot;&amp;ct.data$ci ==&quot;seeder&quot;,])</code></pre>
+<pre><code>## 
+##  Wilcoxon rank sum test
+## 
+## data:  AUC by Vaccinated
+## W = 140, p-value = 8.505e-05
+## alternative hypothesis: true location shift is not equal to 0</code></pre>
 </div>
 <div id="infectious-period" class="section level2">
 <h2>Infectious period</h2>
@@ -486,6 +635,7 @@ out.indiv.one.SIR[out.indiv.one.SIR$cens==0,]</code></pre>
 <pre class="r"><code>#Survival analyses on contact birds
 #perform exponential survival analysis
 surv.fit.one.SIR.exponential &lt;- survival::survreg(survival::Surv(infper,cens)~ relevel(Vaccinated, ref= &quot;No&quot;), dist = &quot;exponential&quot;,data = out.indiv.one.SIR[out.indiv.one.SIR$Challenge == &quot;contact&quot;,], na.action = na.omit)
+
 #perform gaussian survival analysis 
 surv.fit.one.SIR.gaussian &lt;- survival::survreg(survival::Surv(infper,cens)~ relevel(Vaccinated, ref= &quot;No&quot;) , dist = &quot;gaussian&quot;,data = out.indiv.one.SIR[out.indiv.one.SIR$Challenge == &quot;contact&quot;,], na.action = na.omit)
 AIC(surv.fit.one.SIR.exponential)</code></pre>
@@ -705,8 +855,8 @@ Vaccinated
 </tr>
 </tbody>
 </table>
-<p>Probability of a major outbreak is 0 for <span class="math inline">\(R_0&lt;= 1\)</span> and $1-1/R_0 $ otherwise.</p>
-<pre class="r"><code>#probability major outbreak
+<p>Probability of a major outbreak is 0 for <span class="math inline">\(R_0&lt;= 1\)</span> and $1-1/R_0 $ otherwise. This is an approximation, because the infectious period is normally distributed.</p>
+<pre class="r"><code>#approximate probability major outbreak
 (1-1/data.table$R0 ) #negative means 0</code></pre>
 <pre><code>## [1]  0.6875000 -0.0989011</code></pre>
 <pre class="r"><code>(1-1/data.table$R0ll ) #negative means 0</code></pre>
@@ -714,12 +864,11 @@ Vaccinated
 <pre class="r"><code>(1-1/data.table$R0ul ) #negative means 0</code></pre>
 <pre><code>## [1] 0.7983871 0.4845361</code></pre>
 <p>The final size can still be calculated as the absolute number of infections by one initiall infected <span class="math inline">\(\dfrac{1}{1-R_0}\)</span> or the fraction of the population <span class="math inline">\(z\)</span> eventually infected <span class="math inline">\(-\ln(1-z) = z R_0\)</span> :</p>
-<pre class="r"><code>#final size of the outbreak
+<pre class="r"><code>#approximate final size of the outbreak
 final.size&lt;- function(R0){if(R0&lt;1){return(1/(1-R0))}else{
  return(uniroot(function(z){-R0*z-log(1-z)},lower = .1, upper =1)$root)
   }
 }
-
 sapply(data.table$R0,final.size) #first is fraction, second is number</code></pre>
 <pre><code>## [1]  0.9525546 11.1111111</code></pre>
 <pre class="r"><code>sapply(data.table$R0ll,final.size) #first is fraction, second is number</code></pre>
