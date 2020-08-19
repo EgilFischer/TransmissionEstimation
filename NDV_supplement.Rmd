@@ -294,7 +294,8 @@ kableExtra::add_header_above(out.table,c("Treatment" =1,
                  "R0" = 3))
 
 ```
-Probability of a major outbreak is 0 for $R_0<= 1$ and $1-1/R_0 $ otherwise. This is an approximation, because the infectious period is normally distributed. 
+
+Probability of a major outbreak is 0 for $R_0<= 1$ and $1-1/R_0$ otherwise. This is an approximation, because the infectious period is normally distributed. 
 
 ```{r}
 #approximate probability major outbreak
@@ -303,7 +304,9 @@ Probability of a major outbreak is 0 for $R_0<= 1$ and $1-1/R_0 $ otherwise. Thi
 (1-1/data.table$R0ul ) #negative means 0
 
 ```
+
 The final size can still be calculated as the absolute number of infections by one initiall infected $\dfrac{1}{1-R_0}$ or the fraction of the population $z$ eventually infected $-\ln(1-z) = z R_0$ :
+
 ```{r}
 #approximate final size of the outbreak
 final.size<- function(R0){if(R0<1){return(1/(1-R0))}else{
