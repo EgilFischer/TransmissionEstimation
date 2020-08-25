@@ -49,7 +49,7 @@ reform.data<- function(data,
 {
   #remove manual classification which was added for the publication
   data <-data[(data$Sample=="category"&!is.na(data$Sample)),];
-  data[,sampleday.vars]<- sapply(data[,sampleday.vars], function(x){ifelse(x=="S",0,ifelse(x=="I", 1,ifelse(x =="R",2,ifelse(x == "NI", NA, NA))))});
+  data[,sampleday.vars]<- sapply(data[,sampleday.vars], function(x){ifelse(x=="S",0,ifelse(x=="I", 1,ifelse(x =="R",2, NA)))});
   #
   if(!SIR.state){
     #start with a recoding data to binary yes/no

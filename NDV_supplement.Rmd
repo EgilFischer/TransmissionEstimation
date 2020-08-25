@@ -241,6 +241,11 @@ summary(surv.fit.one.SIR.gaussian.sc)
 out.nona.one.SIR <- data.one.SIR[[1]][(!is.na(data.one.SIR[[1]]$S)&!is.na(data.one.SIR[[1]]$C) &data.one.SIR[[1]]$I>0 &data.one.SIR[[1]]$S>0),]
 out.nona.one.SIR$Vaccinated <- factor(out.nona.one.SIR$Vaccinated, levels = c("No","Yes"))
 out.nona.one.SIR$Vaccinated <- relevel(out.nona.one.SIR$Vaccinated, ref = "No")
+
+#add the presence of susceptibles in the seeder groups of the vaccinated
+out.nona.one.SIR[out.nona.one.SIR$Group == "1A",]$S <- out.nona.one.SIR[out.nona.one.SIR$Group == "1A",]$S + 1
+out.nona.one.SIR[out.nona.one.SIR$Group == "1B",]$S <- out.nona.one.SIR[out.nona.one.SIR$Group == "1B",]$S + 3
+
 #estimate beta 
 fit.SIR <- glm(cbind(C, S-C) ~ relevel(Vaccinated,ref = "No") ,
                 offset = log(I/N),
@@ -325,15 +330,15 @@ Three birds in the vaccinated group were challenged, but never started to excree
 - Exclude these birds completely.
 
 ```{r include = F}
-#subtract 1 in group 1A and 3 in group 1B from susceptible to assume these birds are not-susceptible, but do add to the total population size
+#subtract 1 in group 1A and 3 in group 1B from susceptible to assume these birds are immune 
 out.nona.one.SIR.sensR <- out.nona.one.SIR
-out.nona.one.SIR.sensR[out.nona.one.SIR.sensR$Group == "1A",]$S <- out.nona.one.SIR.sensR[out.nona.one.SIR.sensR$Group == "1A",]$S -1 
-out.nona.one.SIR.sensR[out.nona.one.SIR.sensR$Group == "1B",]$S <- out.nona.one.SIR.sensR[out.nona.one.SIR.sensR$Group == "1B",]$S -3
+out.nona.one.SIR.sensR[out.nona.one.SIR.sensR$Group == "1A",]$S <- out.nona.one.SIR.sensR[out.nona.one.SIR.sensR$Group == "1A",]$S - 1
+out.nona.one.SIR.sensR[out.nona.one.SIR.sensR$Group == "1B",]$S <- out.nona.one.SIR.sensR[out.nona.one.SIR.sensR$Group == "1B",]$S - 3
 
 
 fit.SIR.sensR <- glm(cbind(C, S-C) ~ relevel(Vaccinated,ref = "No") ,
                 offset = log(I/N),
-                family = binomial(link = "cloglog"), data = out.nona.one.SIR.sensR, 
+                family = binomial(link = "cloglog"), data = out.nona.one.SIR.sensR,
                 na.action = na.omit)
 #beta and R0
 mean.logbeta.sensR <- cumsum(summary(fit.SIR.sensR)$coefficients[,1])
@@ -346,35 +351,13 @@ var.logR.sensR <- var.logbeta.sensR + var.log.inf.per
 cll.logR.sensR <- mean.logR.sensR - qnorm(1-0.05/2) * sqrt(var.logR.sensR)
 cul.logR.sensR <- mean.logR.sensR + qnorm(1-0.05/2) * sqrt(var.logR.sensR)
 
-#Add 1 in group 1A and 2 in group 1B
-out.nona.one.SIR.sensS <- out.nona.one.SIR
-out.nona.one.SIR.sensS[out.nona.one.SIR.sensS$Group == "1A",]$N <- out.nona.one.SIR.sensS[out.nona.one.SIR.sensS$Group == "1A",]$N -1 
-out.nona.one.SIR.sensS[out.nona.one.SIR.sensS$Group == "1B",]$N <- out.nona.one.SIR.sensS[out.nona.one.SIR.sensS$Group == "1B",]$N -3
-out.nona.one.SIR.sensS[out.nona.one.SIR.sensS$Group == "1A",]$S <- out.nona.one.SIR.sensS[out.nona.one.SIR.sensS$Group == "1A",]$S -1 
-out.nona.one.SIR.sensS[out.nona.one.SIR.sensS$Group == "1B",]$S <- out.nona.one.SIR.sensS[out.nona.one.SIR.sensS$Group == "1B",]$S -3
-
-fit.SIR.sensS <- glm(cbind(C, S-C) ~ relevel(Vaccinated,ref = "No") ,
-                offset = log(I/N),
-                family = binomial(link = "cloglog"), data = out.nona.one.SIR.sensS, 
-                na.action = na.omit)
-
-#beta and R0
-mean.logbeta.sensS <- cumsum(summary(fit.SIR.sensS)$coefficients[,1])
-var.logbeta.sensS <- summary(fit.SIR.sensS)$coefficients[,2]^2
-confint.logbeta.sensS<-  confint(fit.SIR.sensS)+c(0,mean.logbeta.sensS[1])
-
-#calculate R
-mean.logR.sensS <- mean.logbeta.sensS + mean.log.inf.per
-var.logR.sensS <- var.logbeta.sensS + var.log.inf.per
-cll.logR.sensS <- mean.logR.sensS - qnorm(1-0.05/2) * sqrt(var.logR.sensS)
-cul.logR.sensS <- mean.logR.sensS + qnorm(1-0.05/2) * sqrt(var.logR.sensS)
 
 ```
 ```{r}
 #summary of each fit
 summary(fit.SIR)
 summary(fit.SIR.sensR)
-summary(fit.SIR.sensS)
+
 
 #confidence intervals of beta and R of each fit
 exp(mean.logbeta.sensR)
@@ -384,9 +367,4 @@ exp(mean.logR.sensR)
 exp(c(cll.logR.sensR , cul.logR.sensR))
 
 
-exp(mean.logbeta.sensS)
-exp(confint.logbeta.sensS)
-
-exp(mean.logR.sensS)
-exp(c(cll.logR.sensS , cul.logR.sensS))
 ```
