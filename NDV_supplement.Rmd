@@ -246,7 +246,6 @@ fit.SIR <- glm(cbind(C, S-C) ~ relevel(Vaccinated,ref = "No") ,
                 offset = log(I/N),
                 family = binomial(link = "cloglog"), data = out.nona.one.SIR, 
                 na.action = na.omit)
-
 #calculate R0
 alpha = 0.05 #conf.level
 #beta
@@ -292,6 +291,7 @@ kableExtra::add_header_above(out.table,c("Treatment" =1,
                  "beta" = 3,
                  "R0" = 3))
 
+
 ```
 
 Probability of a major outbreak is 0 for $R_0<= 1$ and $1-1/R_0$ otherwise. This is an approximation, because the infectious period is normally distributed. 
@@ -304,11 +304,11 @@ Probability of a major outbreak is 0 for $R_0<= 1$ and $1-1/R_0$ otherwise. This
 
 ```
 
-The final size can still be calculated as the absolute number of infections by one initiall infected $\dfrac{1}{1-R_0}$ or the fraction of the population $z$ eventually infected $-\ln(1-z) = z R_0$ :
+The final size can still be calculated as the absolute number of infections by one initial infected $\dfrac{1}{1-R_0}$ or the fraction of the population $z$ eventually infected $-\ln(1-z) = z R_0$ :
 
 ```{r}
 #approximate final size of the outbreak
-final.size<- function(R0){if(R0<1){return(1/(1-R0))}else{
+final.size<- function(R0){if(R0<1){return(1/(1-R0))}else{ 
  return(uniroot(function(z){-R0*z-log(1-z)},lower = .1, upper =1)$root)
   }
 }
@@ -322,13 +322,13 @@ sapply(data.table$R0ul,final.size) #both fractions
 # Sensitivity to assumptions on non-excreting vaccinated seeder birds
 Three birds in the vaccinated group were challenged, but never started to excreet. In the estimates above we have assumed that these birds were excluded completely from the analyses. We will account for these birds in two ways in additional analyses: 
 - The birds are neither susceptible nor infectious, but do add to the total number of birds (i.e. assuming these birds are immune)
-- The challenge of the birds did not succeed, and these birds were actually susceptibles.
+- Exclude these birds completely.
 
 ```{r include = F}
-#Add 1 in group 1A and 2 in group 1B
+#subtract 1 in group 1A and 3 in group 1B from susceptible to assume these birds are not-susceptible, but do add to the total population size
 out.nona.one.SIR.sensR <- out.nona.one.SIR
-out.nona.one.SIR.sensR[out.nona.one.SIR.sensR$Group == "1A",]$N <- out.nona.one.SIR.sensR[out.nona.one.SIR.sensR$Group == "1A",]$N +1 
-out.nona.one.SIR.sensR[out.nona.one.SIR.sensR$Group == "1B",]$N <- out.nona.one.SIR.sensR[out.nona.one.SIR.sensR$Group == "1B",]$N +2
+out.nona.one.SIR.sensR[out.nona.one.SIR.sensR$Group == "1A",]$S <- out.nona.one.SIR.sensR[out.nona.one.SIR.sensR$Group == "1A",]$S -1 
+out.nona.one.SIR.sensR[out.nona.one.SIR.sensR$Group == "1B",]$S <- out.nona.one.SIR.sensR[out.nona.one.SIR.sensR$Group == "1B",]$S -3
 
 
 fit.SIR.sensR <- glm(cbind(C, S-C) ~ relevel(Vaccinated,ref = "No") ,
@@ -348,10 +348,10 @@ cul.logR.sensR <- mean.logR.sensR + qnorm(1-0.05/2) * sqrt(var.logR.sensR)
 
 #Add 1 in group 1A and 2 in group 1B
 out.nona.one.SIR.sensS <- out.nona.one.SIR
-out.nona.one.SIR.sensS[out.nona.one.SIR.sensS$Group == "1A",]$N <- out.nona.one.SIR.sensS[out.nona.one.SIR.sensS$Group == "1A",]$N +1 
-out.nona.one.SIR.sensS[out.nona.one.SIR.sensS$Group == "1B",]$N <- out.nona.one.SIR.sensS[out.nona.one.SIR.sensS$Group == "1B",]$N +2
-out.nona.one.SIR.sensS[out.nona.one.SIR.sensS$Group == "1A",]$S <- out.nona.one.SIR.sensS[out.nona.one.SIR.sensS$Group == "1A",]$S +1 
-out.nona.one.SIR.sensS[out.nona.one.SIR.sensS$Group == "1B",]$S <- out.nona.one.SIR.sensS[out.nona.one.SIR.sensS$Group == "1B",]$S +2
+out.nona.one.SIR.sensS[out.nona.one.SIR.sensS$Group == "1A",]$N <- out.nona.one.SIR.sensS[out.nona.one.SIR.sensS$Group == "1A",]$N -1 
+out.nona.one.SIR.sensS[out.nona.one.SIR.sensS$Group == "1B",]$N <- out.nona.one.SIR.sensS[out.nona.one.SIR.sensS$Group == "1B",]$N -3
+out.nona.one.SIR.sensS[out.nona.one.SIR.sensS$Group == "1A",]$S <- out.nona.one.SIR.sensS[out.nona.one.SIR.sensS$Group == "1A",]$S -1 
+out.nona.one.SIR.sensS[out.nona.one.SIR.sensS$Group == "1B",]$S <- out.nona.one.SIR.sensS[out.nona.one.SIR.sensS$Group == "1B",]$S -3
 
 fit.SIR.sensS <- glm(cbind(C, S-C) ~ relevel(Vaccinated,ref = "No") ,
                 offset = log(I/N),

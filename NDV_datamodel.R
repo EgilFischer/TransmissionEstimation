@@ -49,7 +49,7 @@ reform.data<- function(data,
 {
   #remove manual classification which was added for the publication
   data <-data[(data$Sample=="category"&!is.na(data$Sample)),];
-  data[,sampleday.vars]<- sapply(data[,sampleday.vars], function(x){ifelse(x=="S",0,ifelse(x=="I", 1,ifelse(x =="R",2,NA)))});
+  data[,sampleday.vars]<- sapply(data[,sampleday.vars], function(x){ifelse(x=="S",0,ifelse(x=="I", 1,ifelse(x =="R",2,ifelse(x == "NI", NA, NA))))});
   #
   if(!SIR.state){
     #start with a recoding data to binary yes/no
@@ -84,21 +84,21 @@ reform.data<- function(data,
   for(day in c(1:length(sampleday.vars)))
   {
     
-    #determine the number of infectious at this day
+    #determine the number of infectious on this day
     inf <- rbind(inf, data.frame(dpch = sampleday.vars[day],
                                  ndpch = day,
                                  aggregate.data.frame(aggregate.data[,sampleday.vars[day]], 
                                                       by = list(aggregate.data$Group, aggregate.data$Vaccinated), 
                                                       FUN = function(x){sum(x==1,na.rm = TRUE)})
     ))
-    #determine the number of recoverd at this day
+    #determine the number of recoverd on this day
     rec <- rbind(rec, data.frame(dpch = sampleday.vars[day],
                                  ndpch = day,
                                  aggregate.data.frame(aggregate.data[,sampleday.vars[day]], 
                                                       by = list(aggregate.data$Group, aggregate.data$Vaccinated), 
                                                       FUN = function(x){sum(x==2, na.rm = TRUE)})
     ))
-    #determine the number of birds at this day
+    #determine the number of birds on this day
     n <- rbind(n, data.frame(dpch = sampleday.vars[day],
                              ndpch = day,
                              aggregate.data.frame(aggregate.data[,sampleday.vars[day]], 
