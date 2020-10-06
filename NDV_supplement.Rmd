@@ -89,6 +89,21 @@ surv.cont
 drop1(surv.cont)
 "Hazard ratio cannot be calculated well because all vaccinated birds survive"
 
+ggplot(data = out.indiv.one.SIR[out.indiv.one.SIR$Vaccinated == "No", ])+
+  geom_histogram(aes(survivaltime, fill = ci))
+aggregate(out.indiv.one.SIR[out.indiv.one.SIR$Vaccinated == "No", ]$survivaltime,by = list(group = out.indiv.one.SIR[out.indiv.one.SIR$Vaccinated == "No", ]$ci), mean)
+aggregate(out.indiv.one.SIR[out.indiv.one.SIR$Vaccinated == "No", ]$survivaltime,by = list(group = out.indiv.one.SIR[out.indiv.one.SIR$Vaccinated == "No", ]$ci), sd)
+
+surv.cont <- coxph(formula = Surv(survivaltime,event) ~ ci , data = out.indiv.one.SIR[out.indiv.one.SIR$Vaccinated == "No", ])
+summary(surv.cont)
+drop1(surv.cont)
+cox.zph(surv.cont)
+plot(cox.zph(surv.cont))
+"Proportional hazards is violated"
+
+km.surv <- survdiff(formula = Surv(survivaltime,event) ~ ci , data = out.indiv.one.SIR[out.indiv.one.SIR$Vaccinated == "No", ])
+km.surv
+"same conclusion teher is a difference between the seeder and contact birds."
 ```
 
 ## Excretion
