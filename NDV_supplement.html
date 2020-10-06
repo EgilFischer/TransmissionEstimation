@@ -373,7 +373,7 @@ summary {
 
 <h1 class="title toc-ignore">NDV_supplement with `A vector vaccine reduces transmission of Newcastle disease virus in commercial broiler chickens with maternally derived antibodies’</h1>
 <h4 class="author">T. Tatar-Kis, E.A.J. Fischer, C. Cazaban, E. Kovacs, Z. G. Homonnay, V. Palya and J.A.(Arjan) Stegeman</h4>
-<h4 class="date">10-7-2020</h4>
+<h4 class="date">24-8-2020</h4>
 
 </div>
 
@@ -682,12 +682,16 @@ summary(surv.fit.one.SIR.gaussian)</code></pre>
 out.nona.one.SIR &lt;- data.one.SIR[[1]][(!is.na(data.one.SIR[[1]]$S)&amp;!is.na(data.one.SIR[[1]]$C) &amp;data.one.SIR[[1]]$I&gt;0 &amp;data.one.SIR[[1]]$S&gt;0),]
 out.nona.one.SIR$Vaccinated &lt;- factor(out.nona.one.SIR$Vaccinated, levels = c(&quot;No&quot;,&quot;Yes&quot;))
 out.nona.one.SIR$Vaccinated &lt;- relevel(out.nona.one.SIR$Vaccinated, ref = &quot;No&quot;)
+
+#add the presence of susceptibles in the seeder groups of the vaccinated
+out.nona.one.SIR[out.nona.one.SIR$Group == &quot;1A&quot;,]$S &lt;- out.nona.one.SIR[out.nona.one.SIR$Group == &quot;1A&quot;,]$S + 1
+out.nona.one.SIR[out.nona.one.SIR$Group == &quot;1B&quot;,]$S &lt;- out.nona.one.SIR[out.nona.one.SIR$Group == &quot;1B&quot;,]$S + 3
+
 #estimate beta 
 fit.SIR &lt;- glm(cbind(C, S-C) ~ relevel(Vaccinated,ref = &quot;No&quot;) ,
                 offset = log(I/N),
                 family = binomial(link = &quot;cloglog&quot;), data = out.nona.one.SIR, 
                 na.action = na.omit)
-
 #calculate R0
 alpha = 0.05 #conf.level
 #beta
@@ -835,46 +839,117 @@ Vaccinated
 4.59
 </td>
 <td style="text-align:right;">
-0.27
+0.24
 </td>
 <td style="text-align:right;">
-0.13
+0.12
 </td>
 <td style="text-align:right;">
-0.52
+0.47
 </td>
 <td style="text-align:right;">
-0.91
+0.82
 </td>
 <td style="text-align:right;">
-0.42
+0.38
 </td>
 <td style="text-align:right;">
-1.94
+1.75
 </td>
 </tr>
 </tbody>
 </table>
-<p>Probability of a major outbreak is 0 for <span class="math inline">\(R_0&lt;= 1\)</span> and $1-1/R_0 $ otherwise. This is an approximation, because the infectious period is normally distributed.</p>
+<p>Probability of a major outbreak is 0 for <span class="math inline">\(R_0&lt;= 1\)</span> and <span class="math inline">\(1-1/R_0\)</span> otherwise. This is an approximation, because the infectious period is normally distributed.</p>
 <pre class="r"><code>#approximate probability major outbreak
 (1-1/data.table$R0 ) #negative means 0</code></pre>
-<pre><code>## [1]  0.6875000 -0.0989011</code></pre>
+<pre><code>## [1]  0.6875000 -0.2195122</code></pre>
 <pre class="r"><code>(1-1/data.table$R0ll ) #negative means 0</code></pre>
-<pre><code>## [1]  0.5145631 -1.3809524</code></pre>
+<pre><code>## [1]  0.5145631 -1.6315789</code></pre>
 <pre class="r"><code>(1-1/data.table$R0ul ) #negative means 0</code></pre>
-<pre><code>## [1] 0.7983871 0.4845361</code></pre>
-<p>The final size can still be calculated as the absolute number of infections by one initiall infected <span class="math inline">\(\dfrac{1}{1-R_0}\)</span> or the fraction of the population <span class="math inline">\(z\)</span> eventually infected <span class="math inline">\(-\ln(1-z) = z R_0\)</span> :</p>
+<pre><code>## [1] 0.7983871 0.4285714</code></pre>
+<p>The final size can still be calculated as the absolute number of infections by one initial infected <span class="math inline">\(\dfrac{1}{1-R_0}\)</span> or the fraction of the population <span class="math inline">\(z\)</span> eventually infected <span class="math inline">\(-\ln(1-z) = z R_0\)</span> :</p>
 <pre class="r"><code>#approximate final size of the outbreak
-final.size&lt;- function(R0){if(R0&lt;1){return(1/(1-R0))}else{
+final.size&lt;- function(R0){if(R0&lt;1){return(1/(1-R0))}else{ 
  return(uniroot(function(z){-R0*z-log(1-z)},lower = .1, upper =1)$root)
   }
 }
 sapply(data.table$R0,final.size) #first is fraction, second is number</code></pre>
-<pre><code>## [1]  0.9525546 11.1111111</code></pre>
+<pre><code>## [1] 0.9525546 5.5555556</code></pre>
 <pre class="r"><code>sapply(data.table$R0ll,final.size) #first is fraction, second is number</code></pre>
-<pre><code>## [1] 0.8124057 1.7241379</code></pre>
+<pre><code>## [1] 0.8124057 1.6129032</code></pre>
 <pre class="r"><code>sapply(data.table$R0ul,final.size) #both fractions</code></pre>
-<pre><code>## [1] 0.9927278 0.7796435</code></pre>
+<pre><code>## [1] 0.9927278 0.7126885</code></pre>
+</div>
+<div id="sensitivity-to-assumptions-on-non-excreting-vaccinated-seeder-birds" class="section level1">
+<h1>Sensitivity to assumptions on non-excreting vaccinated seeder birds</h1>
+<p>Three birds in the vaccinated group were challenged, but never started to excreet. In the estimates above we have assumed that these birds were excluded completely from the analyses. We will account for these birds in two ways in additional analyses: - The birds are neither susceptible nor infectious, but do add to the total number of birds (i.e. assuming these birds are immune) - Exclude these birds completely.</p>
+<pre class="r"><code>#summary of each fit
+summary(fit.SIR)</code></pre>
+<pre><code>## 
+## Call:
+## glm(formula = cbind(C, S - C) ~ relevel(Vaccinated, ref = &quot;No&quot;), 
+##     family = binomial(link = &quot;cloglog&quot;), data = out.nona.one.SIR, 
+##     na.action = na.omit, offset = log(I/N))
+## 
+## Deviance Residuals: 
+##     Min       1Q   Median       3Q      Max  
+## -2.3187  -1.3718  -0.6962   0.6676   3.5367  
+## 
+## Coefficients:
+##                                    Estimate Std. Error z value Pr(&gt;|z|)   
+## (Intercept)                         -0.3975     0.2147  -1.851   0.0641 . 
+## relevel(Vaccinated, ref = &quot;No&quot;)Yes  -1.0199     0.3436  -2.968   0.0030 **
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## (Dispersion parameter for binomial family taken to be 1)
+## 
+##     Null deviance: 99.388  on 36  degrees of freedom
+## Residual deviance: 90.475  on 35  degrees of freedom
+## AIC: 122.16
+## 
+## Number of Fisher Scoring iterations: 6</code></pre>
+<pre class="r"><code>summary(fit.SIR.sensR)</code></pre>
+<pre><code>## 
+## Call:
+## glm(formula = cbind(C, S - C) ~ relevel(Vaccinated, ref = &quot;No&quot;), 
+##     family = binomial(link = &quot;cloglog&quot;), data = out.nona.one.SIR.sensR, 
+##     na.action = na.omit, offset = log(I/N))
+## 
+## Deviance Residuals: 
+##     Min       1Q   Median       3Q      Max  
+## -2.3187  -1.3857  -0.7319   0.9786   3.5367  
+## 
+## Coefficients:
+##                                    Estimate Std. Error z value Pr(&gt;|z|)  
+## (Intercept)                         -0.3975     0.2147  -1.851   0.0641 .
+## relevel(Vaccinated, ref = &quot;No&quot;)Yes  -0.8147     0.3439  -2.369   0.0178 *
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## (Dispersion parameter for binomial family taken to be 1)
+## 
+##     Null deviance: 105.491  on 36  degrees of freedom
+## Residual deviance:  99.795  on 35  degrees of freedom
+## AIC: 129.89
+## 
+## Number of Fisher Scoring iterations: 6</code></pre>
+<pre class="r"><code>#confidence intervals of beta and R of each fit
+exp(mean.logbeta.sensR)</code></pre>
+<pre><code>##                        (Intercept) relevel(Vaccinated, ref = &quot;No&quot;)Yes 
+##                          0.6720301                          0.2975710</code></pre>
+<pre class="r"><code>exp(confint.logbeta.sensR)</code></pre>
+<pre><code>##                                        2.5 %    97.5 %
+## (Intercept)                        0.4229777 1.0050941
+## relevel(Vaccinated, ref = &quot;No&quot;)Yes 0.1477689 0.5811259</code></pre>
+<pre class="r"><code>exp(mean.logR.sensR)</code></pre>
+<pre><code>##                        (Intercept) relevel(Vaccinated, ref = &quot;No&quot;)Yes 
+##                           3.200143                           1.004420</code></pre>
+<pre class="r"><code>exp(c(cll.logR.sensR , cul.logR.sensR))</code></pre>
+<pre><code>##                        (Intercept) relevel(Vaccinated, ref = &quot;No&quot;)Yes 
+##                          2.0644481                          0.4683933 
+##                        (Intercept) relevel(Vaccinated, ref = &quot;No&quot;)Yes 
+##                          4.9606076                          2.1538735</code></pre>
 </div>
 
 

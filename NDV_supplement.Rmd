@@ -61,8 +61,37 @@ data.one.SIR$Vaccinated<-relevel(data.one.SIR$Vaccinated, ref = "No")
 
 ```
 
-## Excretion
+## Survival analyses
+Determine if there is a difference in survival between vaccinated and unvaccinated birds.
 
+```{r include = T}
+#determine length of life
+find.survival.time <- function(m){j = length(m);#look for last entry with value starting at end of vector
+while(j > 0){
+  if(!is.na(m[j]))return(j)
+  j = j - 1
+          }
+}
+out.indiv.one.SIR$survivaltime <-sapply(X = c(1:length(out.indiv.one.SIR$Vaccinated)), FUN = function(x){find.survival.time(out.indiv.one.SIR[x,6:19])} )
+#add censoring as variable to the data set
+out.indiv.one.SIR$event <- as.numeric(out.indiv.one.SIR$`14.dpch` == 1) #0 is alive
+out.indiv.one.SIR$event[is.na(out.indiv.one.SIR$event)] <- 1 #NA is death
+out.indiv.one.SIR[out.indiv.one.SIR$event==0,]
+
+#survival analyses
+surv.cont <-coxph(formula = Surv(survivaltime,event) ~ ci + Vaccinated, data = out.indiv.one.SIR)
+surv.cont
+drop1(surv.cont)
+"Hazard ratio cannot be calculated because all vaccinated birds survive"
+
+surv.cont <- coxph(formula = Surv(survivaltime,event) ~ Vaccinated , data = out.indiv.one.SIR[out.indiv.one.SIR$ci == "contact", ])
+surv.cont
+drop1(surv.cont)
+"Hazard ratio cannot be calculated well because all vaccinated birds survive"
+
+```
+
+## Excretion
 For those that were defined positive
 
 ```{r include = T}
@@ -202,7 +231,6 @@ hist.one.chal
 ```
 
 # Estimate infectious period
-
 The infectious period \(T_{inf}\): Parametric survival analyses assuming Normal distribution.
 
 ```{r include =T}
@@ -211,10 +239,10 @@ out.indiv.one.SIR$cens <- 1-as.numeric(out.indiv.one.SIR$`14.dpch` == 1)
 out.indiv.one.SIR$cens[is.na(out.indiv.one.SIR$cens)] <- 1
 out.indiv.one.SIR[out.indiv.one.SIR$cens==0,]
 #Survival analyses on contact birds
-#perform exponential survival analysis
+#perform exponential survival analysis on infectious period
 surv.fit.one.SIR.exponential <- survival::survreg(survival::Surv(infper,cens)~ relevel(Vaccinated, ref= "No"), dist = "exponential",data = out.indiv.one.SIR[out.indiv.one.SIR$Challenge == "contact",], na.action = na.omit)
 
-#perform gaussian survival analysis 
+#perform gaussian survival analysis on infectious period
 surv.fit.one.SIR.gaussian <- survival::survreg(survival::Surv(infper,cens)~ relevel(Vaccinated, ref= "No") , dist = "gaussian",data = out.indiv.one.SIR[out.indiv.one.SIR$Challenge == "contact",], na.action = na.omit)
 AIC(surv.fit.one.SIR.exponential)
 AIC(surv.fit.one.SIR.gaussian)
